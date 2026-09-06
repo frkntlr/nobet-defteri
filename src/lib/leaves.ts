@@ -108,6 +108,6 @@ export function leavesOverlap(
 export function cellLetter(shift: string, leaveType?: LeaveType) {
   if (shift === "morning") return "S";
   if (shift === "night") return "G";
-  if (shift === "off") return "–";
+  if (shift === "off") return "";
   return leaveType ? LEAVE_SHORT[leaveType] : "İ";
 }

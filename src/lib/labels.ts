@@ -8,13 +8,14 @@ export function tagsFor(employee: Employee, tags: EmployeeTag[]) {
   return tags.filter((t) => ids.includes(t.id));
 }
 
+export function orderedEmployees(employees: Employee[]) {
+  return employees.slice().sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "tr"));
+}
+
 export function groupedEmployees(employees: Employee[]) {
   return (["male", "female"] as const).map((gender) => ({
     gender,
-    list: employees
-      .filter((e) => e.gender === gender)
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, "tr")),
+    list: orderedEmployees(employees.filter((e) => e.gender === gender)),
   }));
 }
 

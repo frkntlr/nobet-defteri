@@ -6,7 +6,7 @@ Vardiya önceliği:
 
 1. Her sabah ve her gece en az **1 erkek**
 2. Herkes ayda en az **15 gün** çalışır
-3. Mümkünse **2 iş / 2 off**
+3. Mümkünse **2 iş / 2 tatil** (2 gün sığmazsa 1 gün nöbet olabilir; tatil her zaman 2 gün)
 4. Olabiliyorsa gece **2 erkek**
 
 Elle hücre değiştirseniz bile o ayın kilitli olmayan günleri bu sıraya göre yeniden ayarlanır.
@@ -41,10 +41,10 @@ Veriler tarayıcı `localStorage` anahtarı `nobet-defteri-v1` içinde tutulur. 
 
 1. **Personel** — erkek/bayan, dönen veya sabit sabah/gece. Etiket eklenir, adı değiştirilir, kişiye yapıştırılır.
 2. **İzinler** — yıllık, normal, günlük, rapor, istirahat, ücretsiz.
-3. **Çizelge** — hücreye tıklayıp sabah / gece / off / yoklama yazın. Elle kilitlenen hücreler siyah çerçevelidir.
+3. **Çizelge** — hücreye tıklayıp sabah / gece / off / yoklama yazın. Elle kilitlenen hücreler siyah çerçevelidir. Personel sırası Personel sayfasından değiştirilir.
 4. **Ayarlar** — erkek sabah/gece tabanı (1, sıfırlanamaz), hedef 2 gece, imza yetkilileri (pasif yapılabilir), resmi tatiller.
 
-Excel ve PDF çıktının altında Ayarlar’daki yetkililer basılır.
+PDF siyah-beyazdır. İzin ve rapor harfleri basılır; off boş bırakılır.
 
 ## Yayın (Vercel)
 

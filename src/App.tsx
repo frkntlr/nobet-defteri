@@ -1,10 +1,9 @@
 import { useRef, useState } from "react";
-import { CalendarDays, FileDown, Save, Settings, Upload, Users, Umbrella } from "lucide-react";
+import { CalendarDays, Save, Settings, Upload, Users, Umbrella } from "lucide-react";
 import type { PageId } from "./types";
 import { cn } from "./lib/cn";
 import { currentMonth } from "./lib/dates";
 import { downloadText } from "./lib/backup";
-import { exportExcel } from "./lib/exportExcel";
 import { exportPdf } from "./lib/exportPdf";
 import { scheduleForMonth } from "./lib/schedule";
 import { exportJson, importJson } from "./lib/storage";
@@ -34,15 +33,6 @@ function Shell() {
   const flash = (text: string) => {
     setToast(text);
     window.setTimeout(() => setToast(null), 3500);
-  };
-
-  const onExcel = async () => {
-    try {
-      const result = scheduleForMonth(state, year, month);
-      await exportExcel(state, result, year, month);
-    } catch {
-      flash("Excel oluşturulamadı.");
-    }
   };
 
   const onPdf = async () => {
@@ -106,9 +96,6 @@ function Shell() {
             })}
           </nav>
           <div className="flex flex-wrap gap-2">
-            <Button variant="ghost" onClick={onExcel}>
-              <FileDown className="size-4" /> Excel
-            </Button>
             <Button variant="ghost" disabled={pdfBusy} onClick={onPdf}>
               {pdfBusy ? "PDF hazırlanıyor…" : "PDF"}
             </Button>

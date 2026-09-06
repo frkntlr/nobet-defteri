@@ -22,6 +22,7 @@ export type Employee = {
   active: boolean;
   notes: string;
   tagIds: string[];
+  sort: number;
 };
 
 export type LeaveRecord = {
