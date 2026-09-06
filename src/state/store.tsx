@@ -25,6 +25,7 @@ type Store = {
   addEmployee: (draft: EmployeeDraft) => void;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
   removeEmployee: (id: string) => void;
+  moveEmployee: (id: string, dir: -1 | 1) => void;
   addSeparation: (a: string, b: string) => void;
   removeSeparation: (id: string) => void;
   addLeave: (leave: Omit<LeaveRecord, "id">) => void;
@@ -78,6 +79,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         active: true,
         notes: draft.notes,
         tagIds: draft.tagIds ?? [],
+        sort: prev.employees.reduce((m, e) => Math.max(m, e.sort ?? 0), -1) + 1,
       };
       employee.cycleOffset = bestOffsetFor(employee, prev.employees, prev.settings, prev.separations);
       const extra = draft.separateFrom
@@ -98,6 +100,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       employees: prev.employees.map((e) => (e.id === id ? { ...e, ...patch } : e)),
     }));
+  }, []);
+
+  const moveEmployee = useCallback((id: string, dir: -1 | 1) => {
+    setState((prev) => {
+      const ordered = [...prev.employees].sort(
+        (a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "tr"),
+      );
+      const i = ordered.findIndex((e) => e.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= ordered.length) return prev;
+      const a = ordered[i];
+      const b = ordered[j];
+      if (!a || !b) return prev;
+      const sortA = a.sort ?? i;
+      const sortB = b.sort ?? j;
+      return {
+        ...prev,
+        employees: prev.employees.map((e) =>
+          e.id === a.id ? { ...e, sort: sortB } : e.id === b.id ? { ...e, sort: sortA } : e,
+        ),
+      };
+    });
   }, []);
 
   const removeEmployee = useCallback((id: string) => {
@@ -322,6 +346,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addEmployee,
       updateEmployee,
       removeEmployee,
+      moveEmployee,
       addSeparation,
       removeSeparation,
       addLeave,
@@ -351,6 +376,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addEmployee,
       updateEmployee,
       removeEmployee,
+      moveEmployee,
       addSeparation,
       removeSeparation,
       addLeave,
