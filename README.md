@@ -54,4 +54,4 @@ Hedef adres: [https://nobet-defter2.vercel.app/](https://nobet-defter2.vercel.ap
 
 İlk yayın için Cursor’daki **Publish** düğmesine bir kez basılır; proje adı **nobet-defter2** olmalıdır. Vercel bu depoyu bağlar. Bundan sonra `main`’e giden her push canlıyı günceller.
 
-Kökteki `vercel.json` yalnızca Vite çıktısını (`dist`) ve SPA yönlendirmesini tanımlar. Derleme `npx vite build` ile yapılır (Node 20+). `package-lock.json` depoda olmalıdır; yoksa Vercel rastgele sürüm çeker ve kırılır.
+Kökteki `vercel.json` Vite çıktısını (`dist`) ve SPA yönlendirmesini tanımlar. Derleme `npx vite build`, kurulum `npm install` (Node 20+). Geçersiz `name` alanı yok; bu Vercel yapılandırma hatalarını keser.
