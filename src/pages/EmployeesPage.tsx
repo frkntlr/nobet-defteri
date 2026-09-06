@@ -1,7 +1,7 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { EmployeeDraft, Pattern } from "../types";
 import { WEEKDAY_LONG, hasCustomRhythm, weekdayListLabel } from "../lib/cycle";
-import { groupedEmployees, tagsFor } from "../lib/labels";
+import { orderedEmployees, tagsFor } from "../lib/labels";
 import { GENDER_LABEL, NAME_PLACEHOLDERS, PATTERN_LABEL } from "../lib/storage";
 import { useStore } from "../state/store";
 import { Button, Card, Field, Input, Select } from "../ui/controls";
@@ -22,7 +22,7 @@ const emptyDraft = (): EmployeeDraft => ({
 });
 
 export function EmployeesPage() {
-  const { state, addEmployee, updateEmployee, removeEmployee, addSeparation, removeSeparation, addTag, updateTag, removeTag } =
+  const { state, addEmployee, updateEmployee, removeEmployee, moveEmployee, addSeparation, removeSeparation, addTag, updateTag, removeTag } =
     useStore();
   const [draft, setDraft] = useState<EmployeeDraft>(emptyDraft);
   const [editing, setEditing] = useState<string | null>(null);
@@ -418,21 +418,32 @@ export function EmployeesPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="text-xs text-ink-soft">
+                  <th className="pb-2 font-medium">Sıra</th>
                   <th className="pb-2 font-medium">Ad</th>
-                  <th className="pb-2 font-medium">Bölüm</th>
                   <th className="pb-2 font-medium">Vardiya</th>
                   <th className="pb-2 font-medium">Kaydırma</th>
                   <th className="pb-2 font-medium" />
                 </tr>
               </thead>
               <tbody>
-                {groupedEmployees(state.employees).map(({ gender, list }) =>
-                  list.length === 0 ? null : (
-                    <Fragment key={gender}>
-                      {list.map((person) => (
+                {orderedEmployees(state.employees).map((person, index) => (
                         <tr key={person.id} className="border-t border-rule">
                           <td className="py-3">
-                            <div className="font-semibold">{person.name}</div>
+                            <div className="flex gap-1">
+                              <Button size="sm" onClick={() => moveEmployee(person.id, -1)} disabled={index === 0}>
+                                ↑
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => moveEmployee(person.id, 1)}
+                                disabled={index === state.employees.length - 1}
+                              >
+                                ↓
+                              </Button>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <div className="text-base font-bold">{person.name}</div>
                             {tagsFor(person, state.tags ?? []).length > 0 ? (
                               <div className="mt-1 flex flex-wrap gap-1">
                                 {tagsFor(person, state.tags ?? []).map((tag) => (
@@ -447,7 +458,6 @@ export function EmployeesPage() {
                             ) : null}
                             {!person.active ? <div className="text-xs text-ink-soft">Pasif</div> : null}
                           </td>
-                          <td className="py-3">{GENDER_LABEL[person.gender]}</td>
                           <td className="py-3">
                             {PATTERN_LABEL[person.pattern]}
                             {(person.workWeekdays?.length ?? 0) > 0 ? (
@@ -471,10 +481,7 @@ export function EmployeesPage() {
                             </Button>
                           </td>
                         </tr>
-                      ))}
-                    </Fragment>
-                  ),
-                )}
+                ))}
               </tbody>
             </table>
           </div>
