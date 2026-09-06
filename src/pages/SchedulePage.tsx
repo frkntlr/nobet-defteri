@@ -4,11 +4,11 @@ import { cn } from "../lib/cn";
 import { dayNumber, formatLong, fromIso, MONTHS_TR, monthDays, monthLabel, toIso, weekdayMon0 } from "../lib/dates";
 import { holidayOn } from "../lib/holidays";
 import { cellLetter, LEAVE_LABEL, LEAVE_SHORT, LEAVE_TYPES } from "../lib/leaves";
-import { cellClass, cellTitle, formatGapDates, groupedEmployees, leaveSwatch } from "../lib/labels";
+import { cellClass, cellTitle, groupedEmployees, leaveSwatch, tagsFor } from "../lib/labels";
 import { clashesWith } from "../lib/separations";
-import { dayCoverage, genderMin, scheduleForMonth, wouldEmptyMaleNight } from "../lib/schedule";
+import { dayCoverage, genderMin, scheduleForMonth, wouldEmptyMaleMorning, wouldEmptyMaleNight } from "../lib/schedule";
 import { weekdayListLabel } from "../lib/cycle";
-import { GENDER_LABEL, PATTERN_LABEL, SECTION_LABEL, SHIFT_LABEL, SOURCE_LABEL } from "../lib/storage";
+import { GENDER_LABEL, PATTERN_LABEL, SECTION_LABEL, SHIFT_LABEL, SOURCE_LABEL, visibleSignatories } from "../lib/storage";
 import { useStore } from "../state/store";
 import { Button, Card } from "../ui/controls";
 
@@ -31,7 +31,12 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
   const active = state.employees.filter((e) => e.active);
   const editingPerson = edit ? state.employees.find((e) => e.id === edit.employeeId) : null;
   const editingCell = edit ? result.cells[`${edit.employeeId}|${edit.date}`] : null;
-  const gapSet = new Set(result.maleNightGaps.map((g) => g.date));
+  const nightGapSet = new Set(result.maleNightGaps.map((g) => g.date));
+  const morningGapSet = new Set(result.maleMorningGaps.map((g) => g.date));
+  const coverageGaps = [
+    ...result.maleMorningGaps.map((g) => ({ ...g, kind: "morning" as const })),
+    ...result.maleNightGaps.map((g) => ({ ...g, kind: "night" as const, shift: "night" as const })),
+  ];
 
   const prevMonth = () => {
     if (month === 0) onMonth(year - 1, 11);
@@ -91,29 +96,32 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
         <Swatch swatch="bg-ok/15 text-ok" label="Yedek" />
       </div>
 
-      {active.some((e) => e.gender === "male") && result.maleNightGaps.length > 0 ? (
+      {active.some((e) => e.gender === "male") && coverageGaps.length > 0 ? (
         <div className="rounded-lg border-2 border-warn bg-[#f8e8e4] px-4 py-3 text-sm text-warn">
-          <p className="font-semibold">Erkek gece nöbeti boş — her gece en az 1 erkek olmalı</p>
+          <p className="font-semibold">Erkek sabah veya gece boş — her vardiyada en az 1 erkek olmalı</p>
           <p className="mt-1 text-warn/90">
-            {formatGapDates(
-              result.maleNightGaps.map((g) => g.date),
-              MONTHS_TR,
-            )}
-            {result.maleNightGaps.some((g) => g.reason === "manual")
+            {coverageGaps
+              .slice(0, 10)
+              .map((g) => {
+                const d = fromIso(g.date);
+                return `${d.getDate()} ${MONTHS_TR[d.getMonth()]} ${g.kind === "morning" ? "sabah" : "gece"}`;
+              })
+              .join(" · ")}
+            {coverageGaps.some((g) => g.reason === "manual")
               ? " · Elle kilitlenen hücreler yüzünden sistem yerini dolduramadı."
-              : result.maleNightGaps.some((g) => g.reason === "leave")
-                ? " · O gecelerde bütün erkekler izinli."
+              : coverageGaps.some((g) => g.reason === "leave")
+                ? " · O günlerde bütün erkekler izinli."
                 : ""}
           </p>
           <p className="mt-1 text-xs">
-            Manuel değişiklik olsa bile o ayın her gecesinde erkek bölümünde 1 kişi bulunmalıdır. Hücreye G yazın veya
-            başka bir erkeği geceye alın.
+            Öncelik: sabah ve gece bir erkek, sonra 15 gün, sonra 2+2, olabiliyorsa gece iki erkek. Kilitli olmayan
+            hücreler bu sıraya göre yeniden ayarlanır.
           </p>
         </div>
       ) : active.some((e) => e.gender === "male") ? (
         <div className="rounded-lg border border-ok/20 bg-[#e7f3ec] px-4 py-2 text-sm text-ok">
-          Bu ay her gecede en az 1 erkek nöbetçi var. Elle değişiklik yapsanız da boş gece bırakılırsa burası kırmızı
-          uyarıya döner.
+          Bu ay her sabah ve her gecede en az 1 erkek nöbetçi var. Elle değişiklik yapsanız da boş vardiya bırakılırsa
+          burası kırmızı uyarıya döner.
         </div>
       ) : null}
 
@@ -156,12 +164,19 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
         </div>
       ) : null}
 
-      {active.length > 0 && result.issues.filter((i) => !(i.section === "male" && i.shift === "night")).length > 0 ? (
+      {active.length > 0 &&
+      result.issues.filter(
+        (i) => !(i.section === "male" && i.shift === "night") && !(i.section === "female" && i.shift === "morning"),
+      ).length > 0 ? (
         <div className="rounded-lg border border-warn/30 bg-[#f8e8e4] px-4 py-3 text-sm text-warn">
           <p className="font-semibold">Bölümde açık vardiya var</p>
           <p className="mt-1 text-warn/90">
             {result.issues
-              .filter((i) => !(i.section === "male" && i.shift === "night"))
+              .filter(
+                (i) =>
+                  !(i.section === "male" && i.shift === "night") &&
+                  !(i.section === "female" && i.shift === "morning"),
+              )
               .slice(0, 8)
               .map((issue) => {
                 const d = fromIso(issue.date);
@@ -191,18 +206,19 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                     (hasMale &&
                       (counts.maleMorning < genderMin(state.settings, "male", "morning") ||
                         counts.maleNight < genderMin(state.settings, "male", "night"))) ||
-                    (hasFemale &&
-                      (counts.femaleMorning < genderMin(state.settings, "female", "morning") ||
-                        counts.femaleNight < genderMin(state.settings, "female", "night")));
+                    (hasFemale && counts.femaleNight < genderMin(state.settings, "female", "night"));
                   const weekend = weekdayMon0(day) >= 5;
                   const holiday = state.settings.showHolidays ? holidayOn(iso, state.holidays) : undefined;
-                  const emptyNight = gapSet.has(iso);
+                  const emptyNight = nightGapSet.has(iso);
+                  const emptyMorning = morningGapSet.has(iso);
                   return (
                     <th
                       key={iso}
                       title={
                         emptyNight
                           ? "Erkek gece nöbeti boş"
+                          : emptyMorning
+                            ? "Erkek sabah nöbeti boş"
                           : holiday
                             ? `${holiday.name}${holiday.halfDay ? " (yarım gün)" : ""} · vardiya devam eder`
                             : undefined
@@ -212,14 +228,18 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                         weekend ? "bg-[#2a241e]" : "",
                         holiday ? "bg-[#8a6a12] text-[#f8ecd0]" : "",
                         emptyNight && !holiday ? "bg-warn text-paper" : "",
-                        short && !holiday && !emptyNight ? "text-[#f0b4b4]" : "",
-                        !holiday && !short && !emptyNight ? "text-paper" : "",
+                        emptyMorning && !holiday && !emptyNight ? "bg-[#8a4b12] text-[#f8ecd0]" : "",
+                        short && !holiday && !emptyNight && !emptyMorning ? "text-[#f0b4b4]" : "",
+                        !holiday && !short && !emptyNight && !emptyMorning ? "text-paper" : "",
                       )}
                     >
                       <div>{["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"][weekdayMon0(day)]}</div>
                       <div className="font-mono text-sm">{dayNumber(day)}</div>
                       {holiday ? <div className="text-[9px] font-semibold tracking-wide">RT</div> : null}
                       {emptyNight ? <div className="text-[9px] font-semibold tracking-wide">GECE</div> : null}
+                      {emptyMorning && !emptyNight ? (
+                        <div className="text-[9px] font-semibold tracking-wide">SABAH</div>
+                      ) : null}
                     </th>
                   );
                 })}
@@ -236,6 +256,18 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                         <tr key={person.id} className="border-t border-rule">
                           <th className="sticky left-0 z-10 bg-paper-2 px-3 py-1.5 text-left">
                             <div className="whitespace-nowrap text-sm font-semibold">{person.name}</div>
+                            {tagsFor(person, state.tags ?? []).length > 0 ? (
+                              <div className="mt-0.5 flex flex-wrap gap-1">
+                                {tagsFor(person, state.tags ?? []).map((tag) => (
+                                  <span
+                                    key={tag.id}
+                                    className="rounded-full bg-[#ebe4d8] px-1.5 py-0 text-[9px] font-medium normal-case tracking-normal text-ink"
+                                  >
+                                    {tag.name}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                             <div className="text-[10px] tracking-wide text-ink-soft uppercase">
                               {GENDER_LABEL[person.gender]} · {PATTERN_LABEL[person.pattern]}
                               {person.pattern === "selected_morning" ||
@@ -250,7 +282,8 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                               (c) =>
                                 c.date === iso && (c.employeeIdA === person.id || c.employeeIdB === person.id),
                             );
-                            const emptyNight = gapSet.has(iso) && person.gender === "male";
+                            const emptyNight = nightGapSet.has(iso) && person.gender === "male";
+                            const emptyMorning = morningGapSet.has(iso) && person.gender === "male";
                             return (
                               <td key={iso} className="p-0.5">
                                 <button
@@ -263,6 +296,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                                     cell?.source === "fill" ? "outline outline-1 outline-ok" : "",
                                     clash ? "ring-2 ring-[#c26a1a] ring-offset-1" : "",
                                     emptyNight && cell?.shift !== "night" ? "ring-2 ring-warn ring-offset-1" : "",
+                                    emptyMorning && cell?.shift !== "morning" ? "ring-1 ring-[#8a4b12] ring-offset-1" : "",
                                   )}
                                   title={cellTitle(cell, holidayOn(iso, state.holidays)?.name)}
                                 >
@@ -342,12 +376,13 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
 
       <Card title="Çıktı imza alanı">
         <p className="mb-3 text-xs text-ink-soft">
-          Excel ve PDF’in altında bu yetkililer basılır. İsim ve pozisyon Ayarlar’dan kaydedilir.
+          Excel ve PDF’in altında yalnızca aktif yetkililer basılır. Pasif yapmak veya silmek için Ayarlar’a gidin.
         </p>
+        {visibleSignatories(state.signatories).length === 0 ? (
+          <p className="text-sm text-ink-soft">Aktif imza yetkilisi yok. Ayarlar’dan ekleyin veya pasifi aktif edin.</p>
+        ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[...state.signatories]
-            .sort((a, b) => a.sort - b.sort)
-            .map((s) => (
+          {visibleSignatories(state.signatories).map((s) => (
               <div key={s.id} className="rounded-lg border border-dashed border-rule bg-white px-3 py-4 text-center">
                 <p className="min-h-6 text-sm font-semibold">{s.name.trim() || "Ad soyad"}</p>
                 <p className="mt-1 text-xs text-ink-soft">{s.position.trim() || "Pozisyon"}</p>
@@ -356,6 +391,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
               </div>
             ))}
         </div>
+        )}
       </Card>
 
       {edit && editingPerson && editingCell ? (
@@ -392,8 +428,14 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
             {wouldEmptyMaleNight(result, state.employees, edit.employeeId, edit.date, "off", state.settings) ? (
               <p className="mt-2 rounded-md border border-warn/30 bg-[#f8e8e4] px-2 py-1.5 text-xs text-warn">
                 Bu erkek şu an gecedeki tek nöbetçi. Off, sabah veya izin yazarsanız {fromIso(edit.date).getDate()}{" "}
-                {MONTHS_TR[fromIso(edit.date).getMonth()]} gecesi boş kalır ve çizelge uyarır. Önce başka bir erkeği
-                geceye alın.
+                {MONTHS_TR[fromIso(edit.date).getMonth()]} gecesi boş kalır. Sistem kilitli olmayan başka erkeği geceye
+                almaya çalışır; kimse yoksa çizelge uyarır.
+              </p>
+            ) : null}
+            {wouldEmptyMaleMorning(result, state.employees, edit.employeeId, edit.date, "off", state.settings) ? (
+              <p className="mt-2 rounded-md border border-[#8a4b12]/40 bg-[#f4e2c4] px-2 py-1.5 text-xs text-[#6b3410]">
+                Bu erkek şu an sabahtaki tek nöbetçi. Off, gece veya izin yazarsanız {fromIso(edit.date).getDate()}{" "}
+                {MONTHS_TR[fromIso(edit.date).getMonth()]} sabahı boş kalır. Önce başka bir erkeği sabaha alın.
               </p>
             ) : null}
             <div className="mt-4 grid grid-cols-3 gap-2">
