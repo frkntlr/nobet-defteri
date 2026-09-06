@@ -230,13 +230,10 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                                 : undefined
                       }
                       className={cn(
-                        "min-w-10 border border-ink px-0.5 py-1 text-[10px] font-semibold",
-                        weekend && !holiday && !emptyNight && !emptyMorning ? "bg-[#dcdcdc] text-ink" : "",
-                        !weekend && !holiday && !emptyNight && !emptyMorning ? "bg-[#f4f4f4] text-ink" : "",
-                        holiday ? "bg-[#c4c4c4] text-ink" : "",
-                        emptyNight && !holiday ? "bg-warn text-paper" : "",
-                        emptyMorning && !holiday && !emptyNight ? "bg-[#8a4b12] text-[#f8ecd0]" : "",
-                        short && !holiday && !emptyNight && !emptyMorning ? "text-warn" : "",
+                        "min-w-10 border border-ink px-0.5 py-1 text-[10px] font-semibold text-ink",
+                        weekend ? "bg-[#d0d0d0]" : "bg-[#f3f3f3]",
+                        holiday ? "bg-[#bcbcbc]" : "",
+                        short && !weekend ? "text-warn" : "",
                       )}
                     >
                       <div className="leading-none">{WEEKDAYS_TR[weekdayMon0(day)]}</div>
@@ -313,7 +310,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                             return (
                               <td
                                 key={iso}
-                                className={cn("border border-ink p-0", weekend ? "bg-[#ececec]" : "bg-white")}
+                                className={cn("border border-ink p-0", weekend ? "bg-[#d8d8d8]" : "bg-white")}
                               >
                                 <button
                                   type="button"
@@ -321,7 +318,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                                   className={cn(
                                     "flex h-8 w-full min-w-9 items-center justify-center font-mono text-[11px] font-semibold",
                                     cell ? cellClass(cell) : "",
-                                    !cell || cell.shift === "off" ? (weekend ? "bg-[#ececec]" : "bg-white") : "",
+                                    !cell || cell.shift === "off" ? (weekend ? "bg-[#d8d8d8]" : "bg-white") : "",
                                     cell?.source === "manual" ? "outline outline-1 outline-ink outline-offset-[-1px]" : "",
                                     cell?.source === "fill" ? "outline outline-1 outline-ok outline-offset-[-1px]" : "",
                                     clash ? "outline outline-2 outline-[#c26a1a] outline-offset-[-1px]" : "",

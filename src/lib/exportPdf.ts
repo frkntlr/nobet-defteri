@@ -64,7 +64,7 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
   <title>${escapeHtml(state.settings.workplaceName)} ${MONTHS_TR[month]} ${year}</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: #fff; color: #000; }
+    html, body { margin: 0; background: #fff; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { font-family: "Liberation Sans", Arial, Helvetica, sans-serif; padding: 8px 10px 12px; }
     h1 { margin: 0; font-size: 15px; font-weight: 700; }
     .meta { margin: 2px 0 8px; font-size: 10px; }
@@ -89,7 +89,7 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
     .daynum { display: block; font-size: 13px; font-weight: 800; line-height: 1.1; margin-top: 1px; }
     .tag { font-size: 8px; font-weight: 500; margin-top: 1px; }
     td.leave { font-weight: 700; }
-    th.weekend, td.weekend { background: #e6e6e6 !important; }
+    th.weekend, td.weekend { background: #d0d0d0 !important; }
     .legend { margin: 6px 0 0; font-size: 9px; }
     table.signs { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 18px; }
     table.signs td.sign {
@@ -109,7 +109,7 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
       button.print { display: none; }
       body { padding: 0; }
       table.grid, table.signs { page-break-inside: avoid; }
-      th.weekend, td.weekend { background: #e6e6e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      th.weekend, td.weekend { background: #d0d0d0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
