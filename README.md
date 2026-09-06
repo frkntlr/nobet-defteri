@@ -1,6 +1,15 @@
 # Nöbet Defteri
 
-Yurt ve gözetim ekipleri için 12 saatlik vardiya çizelgesi. Sabah 07:00–19:00, gece 19:00–07:00. Dönen personel **2 gün iş / 2 gün off** ritminde yürür ve ayda en az 15 gün çalışır. Elle değişiklik bu ritmi bozarsa sistem kilitli olmayan günleri geri çeker.
+Yurt ve gözetim ekipleri için 12 saatlik vardiya çizelgesi. Sabah 07:00–19:00, gece 19:00–07:00.
+
+Vardiya önceliği:
+
+1. Her sabah ve her gece en az **1 erkek**
+2. Herkes ayda en az **15 gün** çalışır
+3. Mümkünse **2 iş / 2 off**
+4. Olabiliyorsa gece **2 erkek**
+
+Elle hücre değiştirseniz bile o ayın kilitli olmayan günleri bu sıraya göre yeniden ayarlanır.
 
 Personel tipinde **Seçili günler (sabah)** vardır: Pazartesi–Pazar kutularından “şu günler gelsin, diğerleri gelmesin” denir. **Özel iş ritmi** (2 iş / 2 off) açık olsa bile işaretlenen günler sabah yazılır; diğer günler off kalır. Sabit sabahçıya da aynı gün kutuları verilebilir.
 
@@ -30,10 +39,10 @@ Veriler tarayıcı `localStorage` anahtarı `nobet-defteri-v1` içinde tutulur. 
 
 ## Kullanım
 
-1. **Personel** — erkek/bayan, dönen veya sabit sabah/gece.
+1. **Personel** — erkek/bayan, dönen veya sabit sabah/gece. Etiket eklenir, adı değiştirilir, kişiye yapıştırılır.
 2. **İzinler** — yıllık, normal, günlük, rapor, istirahat, ücretsiz.
 3. **Çizelge** — hücreye tıklayıp sabah / gece / off / yoklama yazın. Elle kilitlenen hücreler siyah çerçevelidir.
-4. **Ayarlar** — en az erkek gece (taban 1, sıfırlanamaz), hedef 2 gece, imza yetkilileri, resmi tatiller.
+4. **Ayarlar** — erkek sabah/gece tabanı (1, sıfırlanamaz), hedef 2 gece, imza yetkilileri (pasif yapılabilir), resmi tatiller.
 
 Excel ve PDF çıktının altında Ayarlar’daki yetkililer basılır.
 
@@ -41,8 +50,6 @@ Excel ve PDF çıktının altında Ayarlar’daki yetkililer basılır.
 
 GitHub: [https://github.com/frkntlr/nobet-defteri](https://github.com/frkntlr/nobet-defteri)
 
-Hedef adres: [https://nobet-defteri.vercel.app/](https://nobet-defteri.vercel.app/)
+Hedef adres: [https://nobet-defter2.vercel.app/](https://nobet-defter2.vercel.app/)
 
-İlk yayın için Cursor’daki **Publish** düğmesine bir kez basılır; Vercel bu depoyu bağlar. Bundan sonra `main`’e giden her push canlıyı günceller. Kökteki `vercel.json` Vite derlemesini ve SPA yönlendirmesini tanımlar.
-
-Var olan `nobet-defteri` projesini kullanmak için Vercel’de o projenin Git kaynağına bu depoyu verin.
+İlk yayın için Cursor’daki **Publish** düğmesine bir kez basılır; proje adı **nobet-defter2** olmalıdır. Vercel bu depoyu bağlar. Bundan sonra `main`’e giden her push canlıyı günceller. Kökteki `vercel.json` Vite derlemesini ve SPA yönlendirmesini tanımlar.

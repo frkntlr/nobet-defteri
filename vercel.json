@@ -1,4 +1,5 @@
 {
+  "name": "nobet-defter2",
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
