@@ -88,7 +88,7 @@ export function offsetCandidates(cycle: number, work: number) {
 }
 
 export const WEEKDAY_LONG = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"] as const;
-export const WEEKDAY_SHORT = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"] as const;
+export const WEEKDAY_SHORT = ["Pt", "Sa", "Ça", "Pe", "Cu", "Cmt", "Paz"] as const;
 
 export function weekdayListLabel(days: number[]) {
   const normalized = normalizeWeekdays(days);

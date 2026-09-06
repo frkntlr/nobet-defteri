@@ -52,4 +52,6 @@ GitHub: [https://github.com/frkntlr/nobet-defteri](https://github.com/frkntlr/no
 
 Hedef adres: [https://nobet-defter2.vercel.app/](https://nobet-defter2.vercel.app/)
 
-İlk yayın için Cursor’daki **Publish** düğmesine bir kez basılır; proje adı **nobet-defter2** olmalıdır. Vercel bu depoyu bağlar. Bundan sonra `main`’e giden her push canlıyı günceller. Kökteki `vercel.json` Vite derlemesini ve SPA yönlendirmesini tanımlar.
+İlk yayın için Cursor’daki **Publish** düğmesine bir kez basılır; proje adı **nobet-defter2** olmalıdır. Vercel bu depoyu bağlar. Bundan sonra `main`’e giden her push canlıyı günceller.
+
+Kökteki `vercel.json` yalnızca Vite çıktısını (`dist`) ve SPA yönlendirmesini tanımlar. Derleme `npx vite build` ile yapılır (Node 20+). `package-lock.json` depoda olmalıdır; yoksa Vercel rastgele sürüm çeker ve kırılır.

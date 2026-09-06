@@ -112,15 +112,4 @@ export function cellLetter(shift: string, leaveType?: LeaveType) {
   return leaveType ? LEAVE_SHORT[leaveType] : "İ";
 }
 
-/** PDF hücresi: off boş, izin/rapor okunaklı kelime. */
-export function pdfCellMark(shift: string, leaveType?: LeaveType) {
-  if (shift === "morning") return "S";
-  if (shift === "night") return "G";
-  if (shift === "off") return "";
-  if (leaveType === "report") return "Rapor";
-  if (leaveType === "rest") return "İst";
-  if (leaveType === "unpaid") return "Ücr";
-  if (leaveType === "daily") return "Günlük";
-  if (leaveType === "annual") return "Yıllık";
-  return "İzin";
-}
+export const pdfCellMark = cellLetter;

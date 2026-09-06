@@ -25,7 +25,7 @@ export const MONTHS_TR = [
   "Aralık",
 ] as const;
 
-export const WEEKDAYS_TR = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"] as const;
+export const WEEKDAYS_TR = ["Pt", "Sa", "Ça", "Pe", "Cu", "Cmt", "Paz"] as const;
 
 export function toIso(date: Date): IsoDate {
   return format(date, "yyyy-MM-dd");
@@ -43,6 +43,10 @@ export function monthDays(year: number, monthIndex: number): Date[] {
 
 export function weekdayMon0(date: Date) {
   return (date.getDay() + 6) % 7;
+}
+
+export function isWeekend(date: Date) {
+  return weekdayMon0(date) >= 5;
 }
 
 export function daysBetween(date: Date, anchorIso: IsoDate) {
