@@ -1,7 +1,12 @@
-import type { Employee, IsoDate, Shift } from "../types";
+import type { Employee, EmployeeTag, IsoDate, Shift } from "../types";
 import { SHIFT_LABEL, SOURCE_LABEL } from "./storage";
 import { LEAVE_LABEL } from "./leaves";
 import type { Cell } from "../types";
+
+export function tagsFor(employee: Employee, tags: EmployeeTag[]) {
+  const ids = employee.tagIds ?? [];
+  return tags.filter((t) => ids.includes(t.id));
+}
 
 export function groupedEmployees(employees: Employee[]) {
   return (["male", "female"] as const).map((gender) => ({

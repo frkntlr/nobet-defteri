@@ -21,6 +21,7 @@ export type Employee = {
   annualLeaveDays: number | null;
   active: boolean;
   notes: string;
+  tagIds: string[];
 };
 
 export type LeaveRecord = {
@@ -55,6 +56,12 @@ export type Signatory = {
   name: string;
   position: string;
   sort: number;
+  active: boolean;
+};
+
+export type EmployeeTag = {
+  id: string;
+  name: string;
 };
 
 export type Separation = {
@@ -96,6 +103,7 @@ export type AppState = {
   holidays: Holiday[];
   manuals: ManualCell[];
   signatories: Signatory[];
+  tags: EmployeeTag[];
   separations: Separation[];
 };
 
@@ -121,6 +129,10 @@ export type MaleNightGap = {
   actual: number;
   needed: number;
   reason: "empty" | "leave" | "manual";
+};
+
+export type MaleCoverageGap = MaleNightGap & {
+  shift: WorkShift;
 };
 
 export type SeparationClash = {
@@ -158,6 +170,7 @@ export type ScheduleResult = {
   cells: Record<string, Cell>;
   issues: CoverageIssue[];
   maleNightGaps: MaleNightGap[];
+  maleMorningGaps: MaleCoverageGap[];
   rhythmBreaks: RhythmBreak[];
   hours: HourRow[];
   separationClashes: SeparationClash[];
@@ -174,5 +187,6 @@ export type EmployeeDraft = {
   workWeekdays: number[];
   annualLeaveDays: number | null;
   notes: string;
+  tagIds: string[];
   separateFrom: string[];
 };
