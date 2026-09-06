@@ -114,8 +114,8 @@ export function SettingsPage() {
             />
           </Field>
           <Field
-            label="En az bayan — sabah"
-            hint="Çizelgede bayan sabah uyarısı çıkmaz. Gece eksiği varsa uyarı durur."
+            label="İkinci grup — sabah tabanı"
+            hint="Çizelgede sabah uyarısı çıkmaz. İsim veya bölüm basılmaz."
           >
             <Input
               type="number"
@@ -126,8 +126,8 @@ export function SettingsPage() {
             />
           </Field>
           <Field
-            label="En az bayan — gece"
-            hint="Bayan bölümünde yalnızca gece eksiği uyarılır."
+            label="İkinci grup — gece tabanı"
+            hint="Yalnızca gece eksiği uyarılır. Bölüm başlığı kullanılmaz."
           >
             <Input
               type="number"
@@ -179,7 +179,7 @@ export function SettingsPage() {
             checked={settings.autoFillFemale}
             onChange={(e) => updateSettings({ autoFillFemale: e.target.checked })}
           />
-          Bayan bölümünde açık vardiyayı otomatik doldur
+          İkinci grupta açık vardiyayı otomatik doldur
         </label>
         <label className="mt-2 flex items-center gap-2 text-sm">
           <input
@@ -190,7 +190,7 @@ export function SettingsPage() {
           Resmi tatilleri çizelgede göster
         </label>
         <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-ink-soft">
-          <li>Her personel erkek veya bayan olarak kaydedilir. Erkek bölümü ve bayan bölümü ayrı tutulur.</li>
+          <li>Çizelge ve PDF’de cinsiyet veya bölüm başlığı yazılmaz. Personel sırası oklarla değişir.</li>
           <li>
             <span className="font-medium text-ink">1.</span> Her sabah ve her gece en az 1 erkek. Elle hücre kilitlense
             bile kilitli olmayan kişiler bu boşluğu doldurur; gerekirse 2+2 bozulur.
