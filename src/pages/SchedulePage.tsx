@@ -24,7 +24,7 @@ function Swatch({ swatch, label }: { swatch: string; label: string }) {
 }
 
 export function SchedulePage({ year, month, onMonth }: { year: number; month: number; onMonth: (y: number, m: number) => void }) {
-  const { state, setManual, setDayLeave, clearManuals, rebalance } = useStore();
+  const { state, setManual, setDayLeave, clearManuals, rebalance, moveEmployee } = useStore();
   const days = useMemo(() => monthDays(year, month), [year, month]);
   const result = useMemo(() => scheduleForMonth(state, year, month), [state, year, month]);
   const [edit, setEdit] = useState<{ employeeId: string; date: IsoDate } | null>(null);
@@ -233,7 +233,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                       )}
                     >
                       <div>{["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"][weekdayMon0(day)]}</div>
-                      <div className="font-mono text-base font-bold leading-none sm:text-lg">{dayNumber(day)}</div>
+                      <div className="font-mono text-xl font-extrabold leading-none sm:text-2xl">{dayNumber(day)}</div>
                       {holiday ? <div className="text-[9px] font-semibold tracking-wide">RT</div> : null}
                       {emptyNight ? <div className="text-[9px] font-semibold tracking-wide">GECE</div> : null}
                       {emptyMorning && !emptyNight ? (
@@ -246,12 +246,34 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
               </tr>
             </thead>
             <tbody>
-              {orderedEmployees(active).map((person) => {
+              {orderedEmployees(active).map((person, index) => {
                       const hours = result.hours.find((h) => h.employeeId === person.id);
                       return (
                         <tr key={person.id} className="border-t border-rule">
                           <th className="sticky left-0 z-10 bg-paper-2 px-3 py-1.5 text-left">
-                            <div className="whitespace-nowrap text-base font-bold">{person.name}</div>
+                            <div className="flex items-start gap-1.5">
+                              <div className="flex shrink-0 flex-col gap-0.5 pt-0.5">
+                                <button
+                                  type="button"
+                                  className="rounded border border-rule bg-white px-1 text-[10px] leading-4 disabled:opacity-30"
+                                  disabled={index === 0}
+                                  onClick={() => moveEmployee(person.id, -1, true)}
+                                  title="Yukarı"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded border border-rule bg-white px-1 text-[10px] leading-4 disabled:opacity-30"
+                                  disabled={index === active.length - 1}
+                                  onClick={() => moveEmployee(person.id, 1, true)}
+                                  title="Aşağı"
+                                >
+                                  ↓
+                                </button>
+                              </div>
+                              <div>
+                            <div className="whitespace-nowrap text-lg font-extrabold leading-tight sm:text-xl">{person.name}</div>
                             {tagsFor(person, state.tags ?? []).length > 0 ? (
                               <div className="mt-0.5 flex flex-wrap gap-1">
                                 {tagsFor(person, state.tags ?? []).map((tag) => (
@@ -270,6 +292,8 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                               (person.pattern === "fixed_morning" && (person.workWeekdays?.length ?? 0) > 0)
                                 ? ` · ${weekdayListLabel(person.workWeekdays)}`
                                 : ""}
+                            </div>
+                              </div>
                             </div>
                           </th>
                           {result.days.map((iso) => {
@@ -330,7 +354,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                   if (!row) return null;
                   return (
                     <tr key={row.employeeId} className="border-t border-rule">
-                      <td className="py-2 text-base font-semibold">
+                      <td className="py-2 text-lg font-extrabold">
                         {person.name}
                       </td>
                       <td
@@ -370,11 +394,13 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
         ) : (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {visibleSignatories(state.signatories).map((s) => (
-              <div key={s.id} className="flex min-h-36 flex-col items-center rounded-lg border border-rule bg-white px-3 py-4 text-center">
-                <p className="min-h-6 text-sm font-semibold">{s.name.trim() || "Ad soyad"}</p>
-                <p className="mt-1 text-xs text-ink-soft">{s.position.trim() || "Pozisyon"}</p>
-                <div className="mt-auto w-full pt-10">
-                  <div className="border-b border-ink" />
+              <div key={s.id} className="flex min-h-40 flex-col items-center rounded-lg border border-rule bg-white px-3 py-4 text-center">
+                <div className="min-h-12">
+                  <p className="text-sm font-semibold leading-snug">{s.name.trim() || "Ad soyad"}</p>
+                  <p className="mt-1 text-xs leading-snug text-ink-soft">{s.position.trim() || "Pozisyon"}</p>
+                </div>
+                <div className="mt-auto flex w-full flex-1 flex-col justify-end pt-8">
+                  <div className="mx-auto w-[86%] border-b border-ink" />
                   <p className="mt-1 text-[10px] uppercase tracking-widest text-ink-soft">İmza</p>
                 </div>
               </div>
