@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import type { EmployeeDraft, Pattern } from "../types";
 import { WEEKDAY_LONG, hasCustomRhythm, weekdayListLabel } from "../lib/cycle";
-import { groupedEmployees } from "../lib/labels";
+import { groupedEmployees, tagsFor } from "../lib/labels";
 import { GENDER_LABEL, NAME_PLACEHOLDERS, PATTERN_LABEL } from "../lib/storage";
 import { useStore } from "../state/store";
 import { Button, Card, Field, Input, Select } from "../ui/controls";
@@ -17,13 +17,16 @@ const emptyDraft = (): EmployeeDraft => ({
   workWeekdays: [],
   annualLeaveDays: null,
   notes: "",
+  tagIds: [],
   separateFrom: [],
 });
 
 export function EmployeesPage() {
-  const { state, addEmployee, updateEmployee, removeEmployee, addSeparation, removeSeparation } = useStore();
+  const { state, addEmployee, updateEmployee, removeEmployee, addSeparation, removeSeparation, addTag, updateTag, removeTag } =
+    useStore();
   const [draft, setDraft] = useState<EmployeeDraft>(emptyDraft);
   const [editing, setEditing] = useState<string | null>(null);
+  const [newTag, setNewTag] = useState("");
   const placeholder = NAME_PLACEHOLDERS[state.employees.length % NAME_PLACEHOLDERS.length];
 
   const startEdit = (id: string) => {
@@ -41,6 +44,7 @@ export function EmployeesPage() {
       workWeekdays: person.workWeekdays ?? [],
       annualLeaveDays: person.annualLeaveDays,
       notes: person.notes,
+      tagIds: person.tagIds ?? [],
       separateFrom: state.separations
         .filter((s) => s.employeeIdA === id || s.employeeIdB === id)
         .map((s) => (s.employeeIdA === id ? s.employeeIdB : s.employeeIdA)),
@@ -62,6 +66,7 @@ export function EmployeesPage() {
         workWeekdays: draft.workWeekdays,
         annualLeaveDays: draft.annualLeaveDays,
         notes: draft.notes,
+        tagIds: draft.tagIds,
       });
       setEditing(null);
     } else {
@@ -257,6 +262,37 @@ export function EmployeesPage() {
                 }
               />
             </Field>
+            <Field
+              label="Etiketler"
+              hint="Çizelgede ismin altında görünür. Yeni etiket aşağıdaki kutudan eklenir."
+            >
+              {(state.tags ?? []).length === 0 ? (
+                <p className="text-xs text-ink-soft">Henüz etiket yok. Aşağıdan ekleyin.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(state.tags ?? []).map((tag) => {
+                    const on = draft.tagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            tagIds: on ? draft.tagIds.filter((id) => id !== tag.id) : [...draft.tagIds, tag.id],
+                          })
+                        }
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                          on ? "border-ink bg-ink text-paper" : "border-rule bg-white text-ink"
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Field>
             <Field label="Not">
               <Input value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
             </Field>
@@ -313,6 +349,42 @@ export function EmployeesPage() {
           </div>
         </Card>
 
+        <Card title="Personel etiketleri">
+          <p className="mb-3 text-xs text-ink-soft">
+            Etiket adı değiştirilebilir, yenisi eklenebilir. Pasifleştirmek yerine silinince personelden de kalkar.
+          </p>
+          <div className="mb-3 flex gap-2">
+            <Input
+              value={newTag}
+              placeholder="Yeni etiket, örn. Kıdemli"
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                const created = addTag(newTag);
+                if (created) setNewTag("");
+              }}
+            />
+            <Button
+              onClick={() => {
+                const created = addTag(newTag);
+                if (created) setNewTag("");
+              }}
+            >
+              Ekle
+            </Button>
+          </div>
+          <ul className="space-y-2">
+            {(state.tags ?? []).map((tag) => (
+              <li key={tag.id} className="flex items-center gap-2">
+                <Input value={tag.name} onChange={(e) => updateTag(tag.id, e.target.value)} />
+                <Button size="sm" variant="warn" onClick={() => removeTag(tag.id)}>
+                  Sil
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
         {partners.length > 0 ? (
           <Card title="Beraber çalışmasın çiftleri">
             <ul className="space-y-2 text-sm">
@@ -361,6 +433,18 @@ export function EmployeesPage() {
                         <tr key={person.id} className="border-t border-rule">
                           <td className="py-3">
                             <div className="font-semibold">{person.name}</div>
+                            {tagsFor(person, state.tags ?? []).length > 0 ? (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {tagsFor(person, state.tags ?? []).map((tag) => (
+                                  <span
+                                    key={tag.id}
+                                    className="rounded-full bg-[#ebe4d8] px-2 py-0.5 text-[10px] font-medium text-ink"
+                                  >
+                                    {tag.name}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                             {!person.active ? <div className="text-xs text-ink-soft">Pasif</div> : null}
                           </td>
                           <td className="py-3">{GENDER_LABEL[person.gender]}</td>
