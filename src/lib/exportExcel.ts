@@ -1,9 +1,9 @@
 import ExcelJS from "exceljs";
 import type { AppState, ScheduleResult } from "../types";
 import { cellLetter } from "./leaves";
-import { GENDER_LABEL, SHIFT_LABEL } from "./storage";
+import { GENDER_LABEL, SHIFT_LABEL, visibleSignatories } from "./storage";
 import { fromIso, MONTHS_TR } from "./dates";
-import { groupedEmployees } from "./labels";
+import { groupedEmployees, tagsFor } from "./labels";
 
 export async function exportExcel(state: AppState, result: ScheduleResult, year: number, month: number) {
   const wb = new ExcelJS.Workbook();
@@ -14,9 +14,10 @@ export async function exportExcel(state: AppState, result: ScheduleResult, year:
   sheet.addRow([
     `Sabah ${state.settings.morningStart}–${state.settings.morningEnd} · Gece ${state.settings.nightStart}–${state.settings.nightEnd}`,
   ]);
-  if (result.maleNightGaps.length > 0) {
+  const morningGaps = result.maleMorningGaps ?? [];
+  if (result.maleNightGaps.length > 0 || morningGaps.length > 0) {
     sheet.addRow([
-      `UYARI: Erkek gece nöbeti boş günler: ${result.maleNightGaps.map((g) => fromIso(g.date).getDate()).join(", ")}. Her gece en az 1 erkek olmalıdır.`,
+      `UYARI: Erkek sabah/gece boş. Sabah: ${morningGaps.map((g) => fromIso(g.date).getDate()).join(", ") || "—"}. Gece: ${result.maleNightGaps.map((g) => fromIso(g.date).getDate()).join(", ") || "—"}. Her vardiyada en az 1 erkek olmalıdır.`,
     ]);
   }
   sheet.addRow([]);
@@ -31,7 +32,11 @@ export async function exportExcel(state: AppState, result: ScheduleResult, year:
     for (const person of list) {
       const hours = result.hours.find((h) => h.employeeId === person.id);
       const row = [
-        person.name,
+        tagsFor(person, state.tags ?? []).length
+          ? `${person.name} (${tagsFor(person, state.tags ?? [])
+              .map((t) => t.name)
+              .join(", ")})`
+          : person.name,
         GENDER_LABEL[person.gender],
         ...result.days.map((date) => {
           const cell = result.cells[`${person.id}|${date}`];
@@ -73,7 +78,7 @@ export async function exportExcel(state: AppState, result: ScheduleResult, year:
 
   sheet.addRow([]);
   sheet.addRow(["Onay"]);
-  const signs = [...state.signatories].sort((a, b) => a.sort - b.sort);
+  const signs = visibleSignatories(state.signatories);
   sheet.addRow(signs.map((s) => s.name || "Ad soyad"));
   sheet.addRow(signs.map((s) => s.position || "Pozisyon"));
   sheet.addRow(signs.map(() => "İmza"));
