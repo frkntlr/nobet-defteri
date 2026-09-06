@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { IsoDate, LeaveType, Shift } from "../types";
 import { cn } from "../lib/cn";
-import { dayNumber, formatLong, fromIso, MONTHS_TR, monthDays, monthLabel, toIso, weekdayMon0 } from "../lib/dates";
+import { dayNumber, formatLong, fromIso, isWeekend, MONTHS_TR, monthDays, monthLabel, toIso, WEEKDAYS_TR, weekdayMon0 } from "../lib/dates";
 import { holidayOn } from "../lib/holidays";
 import { cellLetter, LEAVE_LABEL, LEAVE_SHORT, LEAVE_TYPES } from "../lib/leaves";
 import { cellClass, cellTitle, leaveSwatch, orderedEmployees, tagsFor } from "../lib/labels";
@@ -87,10 +87,11 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
           label={`Sabah (${state.settings.morningStart}–${state.settings.morningEnd})`}
         />
         <Swatch swatch="bg-night text-paper" label={`Gece (${state.settings.nightStart}–${state.settings.nightEnd})`} />
-        <Swatch swatch="border border-rule text-ink-soft" label="Off" />
+        <Swatch swatch="border border-rule text-ink-soft" label="boş tatil" />
         {LEAVE_TYPES.map((t) => (
           <Swatch key={t} swatch={leaveSwatch(t)} label={`${LEAVE_SHORT[t]} ${LEAVE_LABEL[t]}`} />
         ))}
+        <Swatch swatch="bg-[#dcdcdc] text-ink" label="Cmt Cumartesi · Paz Pazar" />
         <Swatch swatch="bg-[#8a6a12] text-paper" label="RT resmi tatil (çalışılır)" />
         <Swatch swatch="ring-1 ring-ink" label="Elle" />
         <Swatch swatch="bg-ok/15 text-ok" label="Yedek" />
@@ -191,11 +192,13 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
           <p className="text-sm text-ink-soft">Çizelge için önce Personel sayfasından ekip ekleyin.</p>
         </Card>
       ) : (
-        <div className="overflow-auto rounded-xl border border-rule bg-white">
-          <table className="min-w-max border-collapse text-center">
+        <div className="overflow-auto rounded-lg border border-ink bg-white">
+          <table className="w-max min-w-full border-collapse text-center">
             <thead>
-              <tr className="bg-ink text-paper">
-                <th className="sticky left-0 z-20 bg-ink px-3 py-2 text-left text-xs font-semibold">Personel</th>
+              <tr>
+                <th className="sticky left-0 z-20 border border-ink bg-[#222] px-2 py-1.5 text-left text-xs font-semibold text-white">
+                  Personel
+                </th>
                 {days.map((day) => {
                   const iso = toIso(day);
                   const counts = dayCoverage(result, iso, state.employees);
@@ -206,7 +209,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                       (counts.maleMorning < genderMin(state.settings, "male", "morning") ||
                         counts.maleNight < genderMin(state.settings, "male", "night"))) ||
                     (hasFemale && counts.femaleNight < genderMin(state.settings, "female", "night"));
-                  const weekend = weekdayMon0(day) >= 5;
+                  const weekend = isWeekend(day);
                   const holiday = state.settings.showHolidays ? holidayOn(iso, state.holidays) : undefined;
                   const emptyNight = nightGapSet.has(iso);
                   const emptyMorning = morningGapSet.has(iso);
@@ -218,44 +221,46 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                           ? "Erkek gece nöbeti boş"
                           : emptyMorning
                             ? "Erkek sabah nöbeti boş"
-                          : holiday
-                            ? `${holiday.name}${holiday.halfDay ? " (yarım gün)" : ""} · vardiya devam eder`
-                            : undefined
+                            : holiday
+                              ? `${holiday.name}${holiday.halfDay ? " (yarım gün)" : ""} · vardiya devam eder`
+                              : weekend
+                                ? WEEKDAYS_TR[weekdayMon0(day)] === "Cmt"
+                                  ? "Cumartesi"
+                                  : "Pazar"
+                                : undefined
                       }
                       className={cn(
-                        "min-w-11 px-1 py-2 text-[11px] font-medium",
-                        weekend ? "bg-[#2a241e]" : "",
-                        holiday ? "bg-[#8a6a12] text-[#f8ecd0]" : "",
+                        "min-w-10 border border-ink px-0.5 py-1 text-[10px] font-semibold",
+                        weekend && !holiday && !emptyNight && !emptyMorning ? "bg-[#dcdcdc] text-ink" : "",
+                        !weekend && !holiday && !emptyNight && !emptyMorning ? "bg-[#f4f4f4] text-ink" : "",
+                        holiday ? "bg-[#c4c4c4] text-ink" : "",
                         emptyNight && !holiday ? "bg-warn text-paper" : "",
                         emptyMorning && !holiday && !emptyNight ? "bg-[#8a4b12] text-[#f8ecd0]" : "",
-                        short && !holiday && !emptyNight && !emptyMorning ? "text-[#f0b4b4]" : "",
-                        !holiday && !short && !emptyNight && !emptyMorning ? "text-paper" : "",
+                        short && !holiday && !emptyNight && !emptyMorning ? "text-warn" : "",
                       )}
                     >
-                      <div>{["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"][weekdayMon0(day)]}</div>
-                      <div className="font-mono text-xl font-extrabold leading-none sm:text-2xl">{dayNumber(day)}</div>
-                      {holiday ? <div className="text-[9px] font-semibold tracking-wide">RT</div> : null}
-                      {emptyNight ? <div className="text-[9px] font-semibold tracking-wide">GECE</div> : null}
-                      {emptyMorning && !emptyNight ? (
-                        <div className="text-[9px] font-semibold tracking-wide">SABAH</div>
-                      ) : null}
+                      <div className="leading-none">{WEEKDAYS_TR[weekdayMon0(day)]}</div>
+                      <div className="mt-0.5 font-mono text-sm font-extrabold leading-none">{dayNumber(day)}</div>
+                      {holiday ? <div className="text-[8px] font-semibold">RT</div> : null}
+                      {emptyNight ? <div className="text-[8px] font-semibold">GECE</div> : null}
+                      {emptyMorning && !emptyNight ? <div className="text-[8px] font-semibold">SABAH</div> : null}
                     </th>
                   );
                 })}
-                <th className="px-3 py-2 text-xs">Saat</th>
+                <th className="border border-ink bg-[#222] px-2 py-1.5 text-xs text-white">Saat</th>
               </tr>
             </thead>
             <tbody>
               {orderedEmployees(active).map((person, index) => {
                       const hours = result.hours.find((h) => h.employeeId === person.id);
                       return (
-                        <tr key={person.id} className="border-t border-rule">
-                          <th className="sticky left-0 z-10 bg-paper-2 px-3 py-1.5 text-left">
-                            <div className="flex items-start gap-1.5">
-                              <div className="flex shrink-0 flex-col gap-0.5 pt-0.5">
+                        <tr key={person.id}>
+                          <th className="sticky left-0 z-10 border border-ink bg-[#f7f4ee] px-1.5 py-1 text-left">
+                            <div className="flex items-center gap-1">
+                              <div className="flex shrink-0 flex-col">
                                 <button
                                   type="button"
-                                  className="rounded border border-rule bg-white px-1 text-[10px] leading-4 disabled:opacity-30"
+                                  className="h-4 w-5 border border-ink bg-white text-[10px] leading-none disabled:opacity-30"
                                   disabled={index === 0}
                                   onClick={() => moveEmployee(person.id, -1, true)}
                                   title="Yukarı"
@@ -264,7 +269,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                                 </button>
                                 <button
                                   type="button"
-                                  className="rounded border border-rule bg-white px-1 text-[10px] leading-4 disabled:opacity-30"
+                                  className="h-4 w-5 border border-x border-b border-ink bg-white text-[10px] leading-none disabled:opacity-30"
                                   disabled={index === active.length - 1}
                                   onClick={() => moveEmployee(person.id, 1, true)}
                                   title="Aşağı"
@@ -272,8 +277,8 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                                   ↓
                                 </button>
                               </div>
-                              <div>
-                            <div className="whitespace-nowrap text-lg font-extrabold leading-tight sm:text-xl">{person.name}</div>
+                              <div className="min-w-0">
+                            <div className="truncate text-sm font-bold leading-tight">{person.name}</div>
                             {tagsFor(person, state.tags ?? []).length > 0 ? (
                               <div className="mt-0.5 flex flex-wrap gap-1">
                                 {tagsFor(person, state.tags ?? []).map((tag) => (
@@ -286,7 +291,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                                 ))}
                               </div>
                             ) : null}
-                            <div className="text-[10px] tracking-wide text-ink-soft uppercase">
+                            <div className="text-[9px] tracking-wide text-ink-soft uppercase">
                               {PATTERN_LABEL[person.pattern]}
                               {person.pattern === "selected_morning" ||
                               (person.pattern === "fixed_morning" && (person.workWeekdays?.length ?? 0) > 0)
@@ -304,19 +309,24 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                             );
                             const emptyNight = nightGapSet.has(iso) && person.gender === "male";
                             const emptyMorning = morningGapSet.has(iso) && person.gender === "male";
+                            const weekend = isWeekend(fromIso(iso));
                             return (
-                              <td key={iso} className="p-0.5">
+                              <td
+                                key={iso}
+                                className={cn("border border-ink p-0", weekend ? "bg-[#ececec]" : "bg-white")}
+                              >
                                 <button
                                   type="button"
                                   onClick={() => setEdit({ employeeId: person.id, date: iso })}
                                   className={cn(
-                                    "flex h-9 w-full min-w-11 items-center justify-center rounded-sm font-mono text-[11px] font-semibold",
+                                    "flex h-8 w-full min-w-9 items-center justify-center font-mono text-[11px] font-semibold",
                                     cell ? cellClass(cell) : "",
-                                    cell?.source === "manual" ? "ring-1 ring-ink ring-offset-1" : "",
-                                    cell?.source === "fill" ? "outline outline-1 outline-ok" : "",
-                                    clash ? "ring-2 ring-[#c26a1a] ring-offset-1" : "",
-                                    emptyNight && cell?.shift !== "night" ? "ring-2 ring-warn ring-offset-1" : "",
-                                    emptyMorning && cell?.shift !== "morning" ? "ring-1 ring-[#8a4b12] ring-offset-1" : "",
+                                    !cell || cell.shift === "off" ? (weekend ? "bg-[#ececec]" : "bg-white") : "",
+                                    cell?.source === "manual" ? "outline outline-1 outline-ink outline-offset-[-1px]" : "",
+                                    cell?.source === "fill" ? "outline outline-1 outline-ok outline-offset-[-1px]" : "",
+                                    clash ? "outline outline-2 outline-[#c26a1a] outline-offset-[-1px]" : "",
+                                    emptyNight && cell?.shift !== "night" ? "outline outline-2 outline-warn outline-offset-[-1px]" : "",
+                                    emptyMorning && cell?.shift !== "morning" ? "outline outline-1 outline-[#8a4b12] outline-offset-[-1px]" : "",
                                   )}
                                   title={cellTitle(cell, holidayOn(iso, state.holidays)?.name)}
                                 >
@@ -325,7 +335,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                               </td>
                             );
                           })}
-                          <td className="px-3 py-1.5 font-mono text-sm">{hours?.hours ?? 0}</td>
+                          <td className="border border-ink px-2 py-1 font-mono text-sm">{hours?.hours ?? 0}</td>
                         </tr>
                       );
                     })}
