@@ -151,3 +151,117 @@ function scoreOffsets(employees: Employee[], settings: Settings, horizon: number
   }
   return score;
 }
+
+export function balanceOffsets(employees: Employee[], settings: Settings, separations: Separation[] = []) {
+  const next = employees.map((e) => ({ ...e }));
+  for (const gender of ["male", "female"] as const) {
+    for (const pattern of ["rotating", "fixed_morning", "fixed_night"] as const) {
+      const group = next.filter((e) => e.gender === gender && e.pattern === pattern && e.autoOffset);
+      if (group.length === 0) continue;
+      const sample = group[0];
+      const spec = cycleSpec(sample, settings);
+      const candidates = offsetCandidates(spec.cycle, spec.work);
+      for (const person of group) person.cycleOffset = candidates[0] ?? 0;
+      for (const person of group) {
+        let best = candidates[0] ?? 0;
+        let bestScore = -Infinity;
+        for (const offset of candidates) {
+          person.cycleOffset = offset;
+          const score = scoreOffsets(next, settings, spec.cycle, separations);
+          if (score > bestScore) {
+            bestScore = score;
+            best = offset;
+          }
+        }
+        person.cycleOffset = best;
+      }
+    }
+  }
+  return next;
+}
+
+export function bestOffsetFor(
+  employee: Employee,
+  others: Employee[],
+  settings: Settings,
+  separations: Separation[] = [],
+) {
+  if (!employee.autoOffset) return employee.cycleOffset;
+  const spec = cycleSpec(employee, settings);
+  const candidates = offsetCandidates(spec.cycle, spec.work);
+  let best = candidates[0] ?? 0;
+  let bestScore = -Infinity;
+  const pool = [...others.filter((e) => e.active), employee];
+  for (const offset of candidates) {
+    employee.cycleOffset = offset;
+    const score = scoreOffsets(pool, settings, spec.cycle, separations);
+    if (score > bestScore) {
+      bestScore = score;
+      best = offset;
+    }
+  }
+  return best;
+}
+
+function resolvedShift(
+  employee: Employee,
+  date: IsoDate,
+  cells: Record<string, Cell>,
+  leaves: AppState["leaves"],
+  manuals: Map<string, Shift>,
+  settings: Settings,
+): Shift {
+  const cell = cells[cellKey(employee.id, date)];
+  if (cell) return cell.shift;
+  return manuals.get(`${employee.id}|${date}`) || (leaveOn(employee.id, date, leaves) ? "leave" : patternShift(employee, fromIso(date), settings));
+}
+
+function streakDir(
+  employee: Employee,
+  date: IsoDate,
+  dir: 1 | -1,
+  cells: Record<string, Cell>,
+  leaves: AppState["leaves"],
+  manuals: Map<string, Shift>,
+  settings: Settings,
+) {
+  let n = 0;
+  for (let i = 1; i <= 8; i += 1) {
+    if (!isWork(resolvedShift(employee, shiftIso(date, i * dir), cells, leaves, manuals, settings))) break;
+    n += 1;
+  }
+  return n;
+}
+
+function offStreakDir(
+  employee: Employee,
+  date: IsoDate,
+  dir: 1 | -1,
+  cells: Record<string, Cell>,
+  leaves: AppState["leaves"],
+  manuals: Map<string, Shift>,
+  settings: Settings,
+) {
+  let n = 0;
+  for (let i = 1; i <= 12; i += 1) {
+    const shift = resolvedShift(employee, shiftIso(date, i * dir), cells, leaves, manuals, settings);
+    if (isWork(shift)) break;
+    n += 1;
+  }
+  return n;
+}
+
+function hasWorkBeyond(
+  employee: Employee,
+  date: IsoDate,
+  dir: 1 | -1,
+  cells: Record<string, Cell>,
+  leaves: AppState["leaves"],
+  manuals: Map<string, Shift>,
+  settings: Settings,
+) {
+  for (let i = 1; i <= 16; i += 1) {
+    if (isWork(resolvedShift(employee, shiftIso(date, i * dir), cells, leaves, manuals, settings))) return true;
+  }
+  return false;
+}
