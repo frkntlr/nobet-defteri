@@ -34,3 +34,7 @@ const MALE_NIGHT_FLOOR = 1;
 const MALE_MORNING_FLOOR = 1;
 
 type FillRelax = "strict" | "rhythm" | "hard";
+
+function isWork(shift: Shift | undefined): shift is WorkShift {
+  return shift === "morning" || shift === "night";
+}
