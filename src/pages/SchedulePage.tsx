@@ -4,11 +4,11 @@ import { cn } from "../lib/cn";
 import { dayNumber, formatLong, fromIso, MONTHS_TR, monthDays, monthLabel, toIso, weekdayMon0 } from "../lib/dates";
 import { holidayOn } from "../lib/holidays";
 import { cellLetter, LEAVE_LABEL, LEAVE_SHORT, LEAVE_TYPES } from "../lib/leaves";
-import { cellClass, cellTitle, groupedEmployees, leaveSwatch, tagsFor } from "../lib/labels";
+import { cellClass, cellTitle, leaveSwatch, orderedEmployees, tagsFor } from "../lib/labels";
 import { clashesWith } from "../lib/separations";
 import { dayCoverage, genderMin, scheduleForMonth, wouldEmptyMaleMorning, wouldEmptyMaleNight } from "../lib/schedule";
 import { weekdayListLabel } from "../lib/cycle";
-import { GENDER_LABEL, PATTERN_LABEL, SECTION_LABEL, SHIFT_LABEL, SOURCE_LABEL, visibleSignatories } from "../lib/storage";
+import { PATTERN_LABEL, SHIFT_LABEL, SOURCE_LABEL, visibleSignatories } from "../lib/storage";
 import { useStore } from "../state/store";
 import { Button, Card } from "../ui/controls";
 
@@ -135,14 +135,13 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                 const person = state.employees.find((e) => e.id === b.employeeId)?.name ?? "Personel";
                 const d = fromIso(b.date);
                 return `${person} · ${d.getDate()} ${MONTHS_TR[d.getMonth()]} ${
-                  b.kind === "streak" ? "3+ gün iş" : b.kind === "short_work" ? "tek gün iş" : "off 2 günden kısa"
+                  b.kind === "streak" ? "3+ gün iş" : "tatil 2 günden kısa"
                 }`;
               })
               .join(" · ")}
           </p>
           <p className="mt-1 text-xs">
-            Elle kilitlenen hücreler ritmi bozuyorsa komşu günü de düzeltin. Sistem kilitli olmayan günleri 2 iş / 2 off
-            olacak şekilde geri çeker.
+            2 gün nöbet sığmazsa 1 gün yazılabilir; iki iş bloğu arasında kesinlikle 2 gün tatil olur.
           </p>
         </div>
       ) : null}
@@ -180,7 +179,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
               .slice(0, 8)
               .map((issue) => {
                 const d = fromIso(issue.date);
-                return `${d.getDate()} ${MONTHS_TR[d.getMonth()]} ${GENDER_LABEL[issue.section].toLocaleLowerCase("tr")} ${issue.shift === "morning" ? "sabah" : "gece"} ${issue.actual}/${issue.needed}`;
+                return `${d.getDate()} ${MONTHS_TR[d.getMonth()]} ${issue.shift === "morning" ? "sabah" : "gece"} ${issue.actual}/${issue.needed}`;
               })
               .join(" · ")}
           </p>
@@ -234,7 +233,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                       )}
                     >
                       <div>{["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"][weekdayMon0(day)]}</div>
-                      <div className="font-mono text-sm">{dayNumber(day)}</div>
+                      <div className="font-mono text-base font-bold leading-none sm:text-lg">{dayNumber(day)}</div>
                       {holiday ? <div className="text-[9px] font-semibold tracking-wide">RT</div> : null}
                       {emptyNight ? <div className="text-[9px] font-semibold tracking-wide">GECE</div> : null}
                       {emptyMorning && !emptyNight ? (
@@ -247,15 +246,12 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
               </tr>
             </thead>
             <tbody>
-              {groupedEmployees(active).map(({ gender, list }) =>
-                list.length === 0 ? null : (
-                  <FragmentGroup key={gender} label={SECTION_LABEL[gender]} colSpan={days.length + 2}>
-                    {list.map((person) => {
+              {orderedEmployees(active).map((person) => {
                       const hours = result.hours.find((h) => h.employeeId === person.id);
                       return (
                         <tr key={person.id} className="border-t border-rule">
                           <th className="sticky left-0 z-10 bg-paper-2 px-3 py-1.5 text-left">
-                            <div className="whitespace-nowrap text-sm font-semibold">{person.name}</div>
+                            <div className="whitespace-nowrap text-base font-bold">{person.name}</div>
                             {tagsFor(person, state.tags ?? []).length > 0 ? (
                               <div className="mt-0.5 flex flex-wrap gap-1">
                                 {tagsFor(person, state.tags ?? []).map((tag) => (
@@ -269,7 +265,7 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                               </div>
                             ) : null}
                             <div className="text-[10px] tracking-wide text-ink-soft uppercase">
-                              {GENDER_LABEL[person.gender]} · {PATTERN_LABEL[person.pattern]}
+                              {PATTERN_LABEL[person.pattern]}
                               {person.pattern === "selected_morning" ||
                               (person.pattern === "fixed_morning" && (person.workWeekdays?.length ?? 0) > 0)
                                 ? ` · ${weekdayListLabel(person.workWeekdays)}`
@@ -309,9 +305,6 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
                         </tr>
                       );
                     })}
-                  </FragmentGroup>
-                ),
-              )}
             </tbody>
           </table>
         </div>
@@ -332,19 +325,13 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
               </tr>
             </thead>
             <tbody>
-              {result.hours
-                .filter((h) => active.some((e) => e.id === h.employeeId))
-                .map((row) => {
-                  const person = state.employees.find((e) => e.id === row.employeeId);
+              {orderedEmployees(active).map((person) => {
+                  const row = result.hours.find((h) => h.employeeId === person.id);
+                  if (!row) return null;
                   return (
                     <tr key={row.employeeId} className="border-t border-rule">
-                      <td className="py-2">
-                        {person?.name}
-                        {person ? (
-                          <span className="ml-2 text-[10px] uppercase tracking-wide text-ink-soft">
-                            {GENDER_LABEL[person.gender]}
-                          </span>
-                        ) : null}
+                      <td className="py-2 text-base font-semibold">
+                        {person.name}
                       </td>
                       <td
                         className={cn(
@@ -376,18 +363,20 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
 
       <Card title="Çıktı imza alanı">
         <p className="mb-3 text-xs text-ink-soft">
-          Excel ve PDF’in altında yalnızca aktif yetkililer basılır. Pasif yapmak veya silmek için Ayarlar’a gidin.
+          PDF’in altında yalnızca aktif yetkililer basılır. Pasif yapmak veya silmek için Ayarlar’a gidin.
         </p>
         {visibleSignatories(state.signatories).length === 0 ? (
           <p className="text-sm text-ink-soft">Aktif imza yetkilisi yok. Ayarlar’dan ekleyin veya pasifi aktif edin.</p>
         ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {visibleSignatories(state.signatories).map((s) => (
-              <div key={s.id} className="rounded-lg border border-dashed border-rule bg-white px-3 py-4 text-center">
+              <div key={s.id} className="flex min-h-36 flex-col items-center rounded-lg border border-rule bg-white px-3 py-4 text-center">
                 <p className="min-h-6 text-sm font-semibold">{s.name.trim() || "Ad soyad"}</p>
                 <p className="mt-1 text-xs text-ink-soft">{s.position.trim() || "Pozisyon"}</p>
-                <div className="mt-8 border-b border-ink" />
-                <p className="mt-1 text-[10px] uppercase tracking-widest text-ink-soft">İmza</p>
+                <div className="mt-auto w-full pt-10">
+                  <div className="border-b border-ink" />
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-ink-soft">İmza</p>
+                </div>
               </div>
             ))}
         </div>
@@ -472,26 +461,5 @@ export function SchedulePage({ year, month, onMonth }: { year: number; month: nu
         </div>
       ) : null}
     </div>
-  );
-}
-
-function FragmentGroup({
-  label,
-  colSpan,
-  children,
-}: {
-  label: string;
-  colSpan: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <>
-      <tr className="border-t border-ink/20">
-        <th colSpan={colSpan} className="sticky left-0 bg-[#ebe4d8] px-3 py-1.5 text-left text-[11px] font-semibold tracking-wide text-ink uppercase">
-          {label}
-        </th>
-      </tr>
-      {children}
-    </>
   );
 }
