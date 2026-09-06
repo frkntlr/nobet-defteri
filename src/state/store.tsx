@@ -3,6 +3,7 @@ import type {
   AppState,
   Employee,
   EmployeeDraft,
+  EmployeeTag,
   Holiday,
   IsoDate,
   LeaveRecord,
@@ -34,10 +35,13 @@ type Store = {
   updateHoliday: (id: string, patch: Partial<Holiday>) => void;
   removeHoliday: (id: string) => void;
   seedHolidays: (year: number) => void;
-  addSignatory: (partial?: Partial<Pick<Signatory, "name" | "position">>) => void;
+  addSignatory: (partial?: Partial<Pick<Signatory, "name" | "position" | "active">>) => void;
   updateSignatory: (id: string, patch: Partial<Signatory>) => void;
   removeSignatory: (id: string) => void;
   moveSignatory: (id: string, dir: -1 | 1) => void;
+  addTag: (name: string) => EmployeeTag | null;
+  updateTag: (id: string, name: string) => void;
+  removeTag: (id: string) => void;
   setManual: (employeeId: string, date: IsoDate, shift: Shift | null) => void;
   clearManuals: () => void;
   rebalance: () => void;
@@ -73,6 +77,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         annualLeaveDays: draft.annualLeaveDays,
         active: true,
         notes: draft.notes,
+        tagIds: draft.tagIds ?? [],
       };
       employee.cycleOffset = bestOffsetFor(employee, prev.employees, prev.settings, prev.separations);
       const extra = draft.separateFrom
@@ -201,7 +206,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, holidays: mergeHolidays(prev.holidays, year) }));
   }, []);
 
-  const addSignatory = useCallback((partial?: Partial<Pick<Signatory, "name" | "position">>) => {
+  const addSignatory = useCallback((partial?: Partial<Pick<Signatory, "name" | "position" | "active">>) => {
     setState((prev) => {
       const sort = prev.signatories.reduce((m, s) => Math.max(m, s.sort), -1) + 1;
       return {
@@ -213,10 +218,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             name: partial?.name ?? "",
             position: partial?.position ?? "Gözetim Personeli",
             sort,
+            active: partial?.active ?? true,
           },
         ],
       };
     });
+  }, []);
+
+  const addTag = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    const tag: EmployeeTag = { id: uid(), name: trimmed };
+    setState((prev) => {
+      if (prev.tags.some((t) => t.name.toLocaleLowerCase("tr") === trimmed.toLocaleLowerCase("tr"))) return prev;
+      return { ...prev, tags: [...prev.tags, tag] };
+    });
+    return tag;
+  }, []);
+
+  const updateTag = useCallback((id: string, name: string) => {
+    setState((prev) => ({
+      ...prev,
+      tags: prev.tags.map((t) => (t.id === id ? { ...t, name } : t)),
+    }));
+  }, []);
+
+  const removeTag = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((t) => t.id !== id),
+      employees: prev.employees.map((e) => ({
+        ...e,
+        tagIds: (e.tagIds ?? []).filter((tagId) => tagId !== id),
+      })),
+    }));
   }, []);
 
   const updateSignatory = useCallback((id: string, patch: Partial<Signatory>) => {
@@ -301,6 +336,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateSignatory,
       removeSignatory,
       moveSignatory,
+      addTag,
+      updateTag,
+      removeTag,
       setManual,
       clearManuals,
       rebalance,
@@ -327,6 +365,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateSignatory,
       removeSignatory,
       moveSignatory,
+      addTag,
+      updateTag,
+      removeTag,
       setManual,
       clearManuals,
       rebalance,

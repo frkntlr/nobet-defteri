@@ -1,4 +1,14 @@
-import type { AppState, Employee, Holiday, LeaveRecord, ManualCell, Separation, Settings, Signatory } from "../types";
+import type {
+  AppState,
+  Employee,
+  EmployeeTag,
+  Holiday,
+  LeaveRecord,
+  ManualCell,
+  Separation,
+  Settings,
+  Signatory,
+} from "../types";
 import { uid } from "./cn";
 import { officialHolidays, mergeHolidays } from "./holidays";
 import { LEAVE_META, LEAVE_TYPES } from "./leaves";
@@ -6,7 +16,7 @@ import type { LeaveType } from "../types";
 import { makePair } from "./separations";
 
 export const STORAGE_KEY = "nobet-defteri-v1";
-export const STORE_VERSION = 5;
+export const STORE_VERSION = 6;
 
 export const DEFAULT_SETTINGS: Settings = {
   workplaceName: "Nöbet Defteri",
@@ -22,7 +32,7 @@ export const DEFAULT_SETTINGS: Settings = {
   minMaleMorning: 1,
   minMaleNight: 1,
   preferMaleNight: 2,
-  minFemaleMorning: 1,
+  minFemaleMorning: 0,
   minFemaleNight: 1,
   autoFillFemale: false,
   targetWorkDays: 15,
@@ -43,9 +53,20 @@ export const SIGNATORY_ROLES = [
 
 export function defaultSignatories(): Signatory[] {
   return [
-    { id: uid(), name: "", position: "Yurt Müdürü", sort: 0 },
-    { id: uid(), name: "", position: "Gözetim Personeli", sort: 1 },
+    { id: uid(), name: "", position: "Yurt Müdürü", sort: 0, active: true },
+    { id: uid(), name: "", position: "Gözetim Personeli", sort: 1, active: true },
   ];
+}
+
+export function defaultTags(): EmployeeTag[] {
+  return [
+    { id: uid(), name: "Gözetim" },
+    { id: uid(), name: "Nöbet Amiri" },
+  ];
+}
+
+export function visibleSignatories(signatories: Signatory[]) {
+  return [...signatories].filter((s) => s.active !== false).sort((a, b) => a.sort - b.sort);
 }
 
 export function emptyState(): AppState {
@@ -57,6 +78,7 @@ export function emptyState(): AppState {
     holidays: officialHolidays(new Date().getFullYear()),
     manuals: [],
     signatories: defaultSignatories(),
+    tags: defaultTags(),
     separations: [],
   };
 }
@@ -109,7 +131,7 @@ function parseSettings(raw: unknown): Settings {
     rotateShifts: asBool(raw.rotateShifts, d.rotateShifts),
     minMorning: hasGenderMins ? asNum(raw.minMorning, 0) : 0,
     minNight: hasGenderMins ? asNum(raw.minNight, 0) : 0,
-    minMaleMorning: asNum(raw.minMaleMorning, d.minMaleMorning),
+    minMaleMorning: Math.max(1, asNum(raw.minMaleMorning, d.minMaleMorning)),
     minMaleNight: Math.max(1, asNum(raw.minMaleNight, d.minMaleNight)),
     preferMaleNight: asNum(raw.preferMaleNight, d.preferMaleNight),
     minFemaleMorning: asNum(raw.minFemaleMorning, d.minFemaleMorning),
@@ -148,6 +170,7 @@ function parseEmployee(raw: unknown): Employee | null {
     annualLeaveDays: typeof raw.annualLeaveDays === "number" ? raw.annualLeaveDays : null,
     active: asBool(raw.active, true),
     notes: String(raw.notes ?? ""),
+    tagIds: Array.isArray(raw.tagIds) ? raw.tagIds.map(String).filter(Boolean) : [],
   };
 }
 
@@ -177,7 +200,15 @@ function parseSignatory(raw: unknown): Signatory | null {
     name: String(raw.name ?? ""),
     position: String(raw.position ?? "Gözetim Personeli"),
     sort: Number(raw.sort ?? 0) || 0,
+    active: asBool(raw.active, true),
   };
+}
+
+function parseTag(raw: unknown): EmployeeTag | null {
+  if (!isObj(raw) || typeof raw.id !== "string") return null;
+  const name = String(raw.name ?? "").trim();
+  if (!name) return null;
+  return { id: raw.id, name };
 }
 
 function parseSeparation(raw: unknown, ids: Set<string>): Separation | null {
@@ -228,7 +259,14 @@ export function parseState(raw: unknown): AppState {
   const signatories = Array.isArray(raw.signatories)
     ? raw.signatories.map(parseSignatory).filter((s): s is Signatory => s !== null)
     : defaultSignatories();
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags.map(parseTag).filter((t): t is EmployeeTag => t !== null)
+    : defaultTags();
+  const tagIds = new Set(tags.map((t) => t.id));
   const ids = new Set(employees.map((e) => e.id));
+  for (const person of employees) {
+    person.tagIds = person.tagIds.filter((id) => tagIds.has(id));
+  }
   const separations = Array.isArray(raw.separations)
     ? raw.separations.map((s) => parseSeparation(s, ids)).filter((s): s is Separation => s !== null)
     : [];
@@ -240,6 +278,7 @@ export function parseState(raw: unknown): AppState {
     holidays,
     manuals,
     signatories: signatories.length > 0 ? signatories : defaultSignatories(),
+    tags,
     separations,
   };
 }
