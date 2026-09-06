@@ -13,9 +13,9 @@ Elle hücre değiştirseniz bile o ayın kilitli olmayan günleri bu sıraya gö
 
 Personel tipinde **Seçili günler (sabah)** vardır: Pazartesi–Pazar kutularından “şu günler gelsin, diğerleri gelmesin” denir. **Özel iş ritmi** (2 iş / 2 off) açık olsa bile işaretlenen günler sabah yazılır; diğer günler off kalır. Sabit sabahçıya da aynı gün kutuları verilebilir.
 
-## Erkek gece kuralı
+## Sabah ve gece örtüsü
 
-Erkek bölümünde **o ayın her gecesinde en az 1 kişi** olmalıdır. Sistem:
+Her sabah ve her gece **en az 1 kişi** (örtü grubu) olmalıdır. Sistem:
 
 - Açık geceyi mümkünse doldurur (off’taki veya sabah→gece geçişine uyan erkeklerle).
 - Elle hücre değiştirseniz bile kural durur: son erkeği geceden çıkarırsanız çizelge kırmızı uyarı verir, boş gün sütununu işaretler ve hücre penceresinde uyarır.
@@ -39,12 +39,12 @@ Veriler tarayıcı `localStorage` anahtarı `nobet-defteri-v1` içinde tutulur. 
 
 ## Kullanım
 
-1. **Personel** — erkek/bayan, dönen veya sabit sabah/gece. Etiket eklenir, adı değiştirilir, kişiye yapıştırılır.
+1. **Personel** — dönen veya sabit sabah/gece. Etiket eklenir, adı değiştirilir, kişiye yapıştırılır. Sıra oklarla değişir.
 2. **İzinler** — yıllık, normal, günlük, rapor, istirahat, ücretsiz.
-3. **Çizelge** — hücreye tıklayıp sabah / gece / off / yoklama yazın. Elle kilitlenen hücreler siyah çerçevelidir. Personel sırası Personel sayfasından değiştirilir.
-4. **Ayarlar** — erkek sabah/gece tabanı (1, sıfırlanamaz), hedef 2 gece, imza yetkilileri (pasif yapılabilir), resmi tatiller.
+3. **Çizelge** — hücreye tıklayıp sabah / gece / off / yoklama yazın. Elle kilitlenen hücreler siyah çerçevelidir. Personel sırası çizelgede ve Personel sayfasında değişir. Cinsiyet veya bölüm başlığı yazılmaz.
+4. **Ayarlar** — sabah/gece tabanı (1, sıfırlanamaz), hedef 2 gece, imza yetkilileri (pasif yapılabilir), resmi tatiller.
 
-PDF siyah-beyazdır. İzin ve rapor harfleri basılır; off boş bırakılır.
+Excel yoktur. PDF siyah-beyazdır: gün rakamları ve isimler büyük, izin/rapor yazılı, tatil günü boş, imza satırı hizalıdır.
 
 ## Yayın (Vercel)
 
