@@ -25,7 +25,7 @@ type Store = {
   addEmployee: (draft: EmployeeDraft) => void;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
   removeEmployee: (id: string) => void;
-  moveEmployee: (id: string, dir: -1 | 1) => void;
+  moveEmployee: (id: string, dir: -1 | 1, onlyActive?: boolean) => void;
   addSeparation: (a: string, b: string) => void;
   removeSeparation: (id: string) => void;
   addLeave: (leave: Omit<LeaveRecord, "id">) => void;
@@ -102,11 +102,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const moveEmployee = useCallback((id: string, dir: -1 | 1) => {
+  const moveEmployee = useCallback((id: string, dir: -1 | 1, onlyActive = false) => {
     setState((prev) => {
-      const ordered = [...prev.employees].sort(
-        (a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "tr"),
-      );
+      const ordered = [...prev.employees]
+        .filter((e) => (onlyActive ? e.active : true))
+        .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "tr"));
       const i = ordered.findIndex((e) => e.id === id);
       const j = i + dir;
       if (i < 0 || j < 0 || j >= ordered.length) return prev;
