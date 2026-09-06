@@ -205,6 +205,21 @@ describe("2 iş / 2 off ve 15 gün", () => {
     }
   });
 
+  it("sabahçı varken gececiyi sabaha yazmaz", () => {
+    const employees = [
+      male("sabahci", 0, { pattern: "fixed_morning" }),
+      male("gececi", 0, { pattern: "fixed_night" }),
+      male("donen", 2),
+    ];
+    const result = buildSchedule(employees, [], [], settings, august);
+    for (const date of result.days) {
+      if (result.cells[`sabahci|${date}`]?.shift === "morning") {
+        expect(result.cells[`gececi|${date}`]?.shift, date).not.toBe("morning");
+        expect(result.cells[`donen|${date}`]?.shift, date).not.toBe("morning");
+      }
+    }
+  });
+
   it("2 gün nöbet sığmazsa tek gün iş kalabilir", () => {
     const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
     const result = buildSchedule(employees, [], [{ employeeId: "a", date: "2026-08-05", shift: "off" }], settings, august);
