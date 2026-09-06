@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { HOLIDAY_KIND_LABEL } from "../lib/holidays";
 import { SIGNATORY_ROLES } from "../lib/storage";
 import { useStore } from "../state/store";
-import { Button, Card, Field, Input, Select } from "../ui/controls";
+import { Button, Card, Field, Input } from "../ui/controls";
 import { importBackupFile } from "../lib/backup";
 
 export function SettingsPage() {
@@ -79,19 +79,19 @@ export function SettingsPage() {
           </Field>
           <Field
             label="En az erkek — sabah"
-            hint="Varsayılan 1 kişi. Sistem fazla erkek sabahı off’a çeker; ikinci kişiyi hücreden elle sabah yazarsan 2 kalır."
+            hint="1. öncelik. Her sabah en az 1 erkek. 0 kabul edilmez. Elle değişiklik olsa bile sistem açık sabahı doldurur."
           >
             <Input
               type="number"
-              min={0}
+              min={1}
               max={20}
               value={settings.minMaleMorning}
-              onChange={(e) => updateSettings({ minMaleMorning: Number(e.target.value) || 0 })}
+              onChange={(e) => updateSettings({ minMaleMorning: Math.max(1, Number(e.target.value) || 1) })}
             />
           </Field>
           <Field
             label="En az erkek — gece"
-            hint="Zorunlu taban. 0 kabul edilmez; her gece en az 1 erkek olmalıdır. Elle değişiklik bu kuralı kaldırmaz, boş gece uyarılır."
+            hint="1. öncelik. Her gece en az 1 erkek. 0 kabul edilmez. Elle değişiklik bu kuralı kaldırmaz."
           >
             <Input
               type="number"
@@ -103,7 +103,7 @@ export function SettingsPage() {
           </Field>
           <Field
             label="Hedef erkek — gece"
-            hint="Mümkünse 2 erkek gece yazar. Sığmazsa 1 erkek yeter; 0 erkek bırakılmaz ve çizelge uyarır."
+            hint="4. öncelik. Sabah/gece tabanı, 15 gün ve 2+2 sağlandıktan sonra mümkünse 2 erkek gece yazar."
           >
             <Input
               type="number"
@@ -113,7 +113,10 @@ export function SettingsPage() {
               onChange={(e) => updateSettings({ preferMaleNight: Math.max(1, Number(e.target.value) || 2) })}
             />
           </Field>
-          <Field label="En az bayan — sabah">
+          <Field
+            label="En az bayan — sabah"
+            hint="Çizelgede bayan sabah uyarısı çıkmaz. Gece eksiği varsa uyarı durur."
+          >
             <Input
               type="number"
               min={0}
@@ -122,7 +125,10 @@ export function SettingsPage() {
               onChange={(e) => updateSettings({ minFemaleMorning: Number(e.target.value) || 0 })}
             />
           </Field>
-          <Field label="En az bayan — gece">
+          <Field
+            label="En az bayan — gece"
+            hint="Bayan bölümünde yalnızca gece eksiği uyarılır."
+          >
             <Input
               type="number"
               min={0}
@@ -185,48 +191,63 @@ export function SettingsPage() {
         </label>
         <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-ink-soft">
           <li>Her personel erkek veya bayan olarak kaydedilir. Erkek bölümü ve bayan bölümü ayrı tutulur.</li>
-          <li>Erkek sabah vardiyasında 1 kişi tutulur. İkinci erkek ancak hücreye elle sabah yazılırsa kalır.</li>
           <li>
-            Erkek gece vardiyasında mümkünse 2 kişi yazılır. Elle değişiklik olsa bile o ayın her gecesinde en az 1
-            erkek olmak zorundadır; boş gece kırmızı uyarı verir.
+            <span className="font-medium text-ink">1.</span> Her sabah ve her gece en az 1 erkek. Elle hücre kilitlense
+            bile kilitli olmayan kişiler bu boşluğu doldurur; gerekirse 2+2 bozulur.
           </li>
           <li>
-            Dönen ve sabit sabah/gece personel 2 gün iş / 2 gün off gider. Elle değişiklik bu ritmi bozarsa sistem kilitli
-            olmayan günleri geri çeker; 3 gün üst üste iş veya tek gün off bırakılmaz.
+            <span className="font-medium text-ink">2.</span> Herkes (izin / elle off yoksa) ayda en az 15 gün çalışır.
+            Seçili sabah günleri bu hedefe zorlanmaz; işaretlenen günler yine gelir.
           </li>
           <li>
-            Herkes (izin/elle off yoksa) ayda en az 15 gün çalışır. Eksik gün, 2+2’ye uyan şekilde çift iş günü olarak
-            eklenir. Seçili sabah günleri özel iş ritmi açık olsa bile o günlerde gelir; diğer günler off kalır.
+            <span className="font-medium text-ink">3.</span> 2 iş / 2 off. Üst iki kural bozulmadan kilitli olmayan
+            günler bu ritme çekilir.
+          </li>
+          <li>
+            <span className="font-medium text-ink">4.</span> Olabiliyorsa gece 2 erkek. Sabahı boşaltmaz, 15 günü ve
+            2+2’yi bozmaz.
           </li>
         </ul>
       </Card>
 
       <div className="space-y-4">
         <Card title="Çıktı imza yetkilileri">
+          <p className="mb-3 text-xs text-ink-soft">
+            Pasif yetkili çizelge, Excel ve PDF’de görünmez; kayıt silinmez. İsterseniz tamamen silebilirsiniz.
+          </p>
+          <datalist id="signatory-roles">
+            {SIGNATORY_ROLES.map((role) => (
+              <option key={role} value={role} />
+            ))}
+          </datalist>
           <div className="space-y-3">
             {[...state.signatories]
               .sort((a, b) => a.sort - b.sort)
               .map((s) => (
-                <div key={s.id} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <div
+                  key={s.id}
+                  className={`grid gap-2 sm:grid-cols-[1fr_1fr_auto] ${s.active === false ? "opacity-55" : ""}`}
+                >
                   <Input
                     placeholder="Ad soyad"
                     value={s.name}
                     onChange={(e) => updateSignatory(s.id, { name: e.target.value })}
                   />
-                  <Select value={s.position} onChange={(e) => updateSignatory(s.id, { position: e.target.value })}>
-                    {SIGNATORY_ROLES.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                    {!SIGNATORY_ROLES.includes(s.position) ? <option value={s.position}>{s.position}</option> : null}
-                  </Select>
-                  <div className="flex gap-1">
+                  <Input
+                    list="signatory-roles"
+                    placeholder="Pozisyon"
+                    value={s.position}
+                    onChange={(e) => updateSignatory(s.id, { position: e.target.value })}
+                  />
+                  <div className="flex flex-wrap gap-1">
                     <Button size="sm" onClick={() => moveSignatory(s.id, -1)}>
                       ↑
                     </Button>
                     <Button size="sm" onClick={() => moveSignatory(s.id, 1)}>
                       ↓
+                    </Button>
+                    <Button size="sm" onClick={() => updateSignatory(s.id, { active: s.active === false })}>
+                      {s.active === false ? "Aktif et" : "Pasif"}
                     </Button>
                     <Button size="sm" variant="warn" onClick={() => removeSignatory(s.id)}>
                       Sil

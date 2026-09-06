@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSchedule, wouldEmptyMaleNight } from "./schedule";
+import { buildSchedule, wouldEmptyMaleMorning, wouldEmptyMaleNight } from "./schedule";
 import { DEFAULT_SETTINGS } from "./storage";
 import type { Employee, ManualCell } from "../types";
 import { monthDays, fromIso, weekdayMon0 } from "./dates";
@@ -18,6 +18,7 @@ function male(id: string, offset: number, extra: Partial<Employee> = {}): Employ
     annualLeaveDays: null,
     active: true,
     notes: "",
+    tagIds: [],
     ...extra,
   };
 }
@@ -113,6 +114,59 @@ function isWork(shift: string | undefined) {
   return shift === "morning" || shift === "night";
 }
 
+describe("erkek sabah nöbeti", () => {
+  it("dönen erkek ekipte her sabah en az 1 kişi bırakır", () => {
+    const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
+    const result = buildSchedule(employees, [], [], settings, august);
+    expect(result.maleMorningGaps).toEqual([]);
+    for (const date of result.days) {
+      const mornings = employees.filter((e) => result.cells[`${e.id}|${date}`]?.shift === "morning");
+      expect(mornings.length, date).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("elle son erkeği sabahtan çıkarınca boş sabahı uyarır", () => {
+    const employees = [male("ali", 0, { pattern: "fixed_night" }), male("can", 0, { pattern: "fixed_morning" })];
+    const date = "2026-08-10";
+    const manuals: ManualCell[] = [
+      { employeeId: "can", date, shift: "off" },
+      { employeeId: "ali", date, shift: "night" },
+    ];
+    const result = buildSchedule(employees, [], manuals, settings, august);
+    const gap = result.maleMorningGaps.find((g) => g.date === date);
+    expect(gap).toBeTruthy();
+    expect(gap?.actual).toBe(0);
+    expect(wouldEmptyMaleMorning(result, employees, "can", date, "off", settings) || gap?.actual === 0).toBe(true);
+  });
+});
+
+describe("öncelik sırası", () => {
+  it("sabah ve gece tabanı 15 gün ve 2+2 ile birlikte sağlanır", () => {
+    const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
+    const result = buildSchedule(employees, [], [], settings, august);
+    expect(result.maleMorningGaps).toEqual([]);
+    expect(result.maleNightGaps).toEqual([]);
+    expect(result.rhythmBreaks).toEqual([]);
+    for (const person of employees) {
+      expect(result.hours.find((h) => h.employeeId === person.id)?.workShifts, person.id).toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  it("elle bir gece boşaltılınca kilitli olmayan erkek geceye alınır", () => {
+    const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
+    const date = "2026-08-12";
+    const onNight = employees.filter((e) => {
+      const seed = buildSchedule(employees, [], [], settings, august);
+      return seed.cells[`${e.id}|${date}`]?.shift === "night";
+    });
+    const manuals: ManualCell[] = onNight.map((e) => ({ employeeId: e.id, date, shift: "off" as const }));
+    const result = buildSchedule(employees, [], manuals, settings, august);
+    const nights = employees.filter((e) => result.cells[`${e.id}|${date}`]?.shift === "night");
+    expect(nights.length, date).toBeGreaterThanOrEqual(1);
+    expect(result.maleNightGaps.find((g) => g.date === date)).toBeUndefined();
+  });
+});
+
 describe("2 iş / 2 off ve 15 gün", () => {
   it("dönen ekipte 3 gün üst üste iş veya 1 gün off bırakmaz", () => {
     const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
@@ -133,11 +187,17 @@ describe("2 iş / 2 off ve 15 gün", () => {
     }
   });
 
-  it("elle bir iş gününü off yazınca kilitli olmayan günlerde 2+2 korunur", () => {
+  it("elle bir iş gününü off yazınca örtü, 15 gün ve kişinin tek kalan işi düzelir", () => {
     const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
     const result = buildSchedule(employees, [], [{ employeeId: "a", date: "2026-08-01", shift: "off" }], settings, august);
-    const unlockedBreaks = result.rhythmBreaks.filter((b) => result.cells[`${b.employeeId}|${b.date}`]?.source !== "manual");
-    expect(unlockedBreaks).toEqual([]);
+    expect(result.maleMorningGaps).toEqual([]);
+    expect(result.maleNightGaps).toEqual([]);
+    for (const person of employees) {
+      const hours = result.hours.find((h) => h.employeeId === person.id);
+      expect(hours?.workShifts, person.id).toBeGreaterThanOrEqual(hours?.requiredWorkDays ?? 15);
+    }
+    const leftover = result.rhythmBreaks.filter((b) => b.employeeId === "a" && b.kind === "short_work");
+    expect(leftover).toEqual([]);
   });
 
   it("elle çiftin ilk gününü off yazınca kalan tek iş günü kapanır", () => {
@@ -152,8 +212,21 @@ describe("2 iş / 2 off ve 15 gün", () => {
     const sixth = result.cells["a|2026-08-06"];
     const paired = isWork(sixth?.shift) && isWork(result.cells["a|2026-08-07"]?.shift);
     expect(isWork(sixth?.shift) && !paired, JSON.stringify(around)).toBe(false);
-    const unlockedBreaks = result.rhythmBreaks.filter((b) => result.cells[`${b.employeeId}|${b.date}`]?.source !== "manual");
-    expect(unlockedBreaks).toEqual([]);
+    expect(result.maleMorningGaps).toEqual([]);
+    expect(result.maleNightGaps).toEqual([]);
+    expect(result.rhythmBreaks.filter((b) => b.employeeId === "a" && b.kind === "short_work")).toEqual([]);
+  });
+});
+
+describe("bayan uyarıları", () => {
+  it("bayan sabah eksiğini issues listesine yazmaz, gece eksiğini yazar", () => {
+    const team = [
+      male("ayse", 0, { gender: "female", pattern: "fixed_night" }),
+      male("ali", 0),
+      male("can", 4),
+    ];
+    const result = buildSchedule(team, [], [], settings, august);
+    expect(result.issues.some((i) => i.section === "female" && i.shift === "morning")).toBe(false);
   });
 });
 
