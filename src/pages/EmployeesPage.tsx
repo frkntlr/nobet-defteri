@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { EmployeeDraft, Pattern } from "../types";
 import { WEEKDAY_LONG, hasCustomRhythm, weekdayListLabel } from "../lib/cycle";
 import { orderedEmployees, tagsFor } from "../lib/labels";
-import { GENDER_LABEL, NAME_PLACEHOLDERS, PATTERN_LABEL } from "../lib/storage";
+import { NAME_PLACEHOLDERS, PATTERN_LABEL } from "../lib/storage";
 import { useStore } from "../state/store";
 import { Button, Card, Field, Input, Select } from "../ui/controls";
 
@@ -127,13 +127,16 @@ export function EmployeesPage() {
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               />
             </Field>
-            <Field label="Bölüm" hint="Erkek personel erkek bölümünü, bayan personel bayan bölümünü tutar.">
+            <Field
+              label="Örtü"
+              hint="Çizelge ve PDF’de yazılmaz. Sabah ve gece tabanı için kullanılır; bölüm başlığı yoktur."
+            >
               <Select
                 value={draft.gender}
                 onChange={(e) => setDraft({ ...draft, gender: e.target.value as EmployeeDraft["gender"] })}
               >
-                <option value="male">Erkek</option>
-                <option value="female">Bayan</option>
+                <option value="male">Sabah ve gece tabanı</option>
+                <option value="female">İkinci grup</option>
               </Select>
             </Field>
             <div>
@@ -326,7 +329,6 @@ export function EmployeesPage() {
                         }}
                       />
                       {e.name}
-                      <span className="text-ink-soft"> · {GENDER_LABEL[e.gender]}</span>
                     </label>
                   ))}
               </div>
@@ -443,7 +445,7 @@ export function EmployeesPage() {
                             </div>
                           </td>
                           <td className="py-3">
-                            <div className="text-base font-bold">{person.name}</div>
+                            <div className="text-lg font-extrabold">{person.name}</div>
                             {tagsFor(person, state.tags ?? []).length > 0 ? (
                               <div className="mt-1 flex flex-wrap gap-1">
                                 {tagsFor(person, state.tags ?? []).map((tag) => (
