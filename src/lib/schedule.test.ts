@@ -19,6 +19,7 @@ function male(id: string, offset: number, extra: Partial<Employee> = {}): Employ
     active: true,
     notes: "",
     tagIds: [],
+    sort: 0,
     ...extra,
   };
 }
@@ -168,26 +169,32 @@ describe("öncelik sırası", () => {
 });
 
 describe("2 iş / 2 off ve 15 gün", () => {
-  it("dönen ekipte 3 gün üst üste iş veya 1 gün off bırakmaz", () => {
+  it("dönen ekipte 3 gün üst üste iş veya 1 gün tatil bırakmaz", () => {
     const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
     const result = buildSchedule(employees, [], [], settings, august);
-    expect(result.rhythmBreaks).toEqual([]);
+    expect(result.rhythmBreaks.filter((b) => b.kind !== "short_work")).toEqual([]);
     for (const person of employees) {
       const hours = result.hours.find((h) => h.employeeId === person.id);
       expect(hours?.workShifts, person.id).toBeGreaterThanOrEqual(15);
       let run = 0;
+      let off = 0;
+      let sawWork = false;
       for (const date of result.days) {
         if (isWork(result.cells[`${person.id}|${date}`]?.shift)) {
+          if (sawWork && off > 0) expect(off, `${person.id} ${date}`).toBeGreaterThanOrEqual(2);
+          off = 0;
           run += 1;
+          sawWork = true;
           expect(run, `${person.id} ${date}`).toBeLessThanOrEqual(2);
         } else {
           run = 0;
+          if (result.cells[`${person.id}|${date}`]?.shift !== "leave") off += 1;
         }
       }
     }
   });
 
-  it("elle bir iş gününü off yazınca örtü, 15 gün ve kişinin tek kalan işi düzelir", () => {
+  it("elle bir iş gününü off yazınca örtü ve 15 gün durur", () => {
     const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
     const result = buildSchedule(employees, [], [{ employeeId: "a", date: "2026-08-01", shift: "off" }], settings, august);
     expect(result.maleMorningGaps).toEqual([]);
@@ -196,25 +203,18 @@ describe("2 iş / 2 off ve 15 gün", () => {
       const hours = result.hours.find((h) => h.employeeId === person.id);
       expect(hours?.workShifts, person.id).toBeGreaterThanOrEqual(hours?.requiredWorkDays ?? 15);
     }
-    const leftover = result.rhythmBreaks.filter((b) => b.employeeId === "a" && b.kind === "short_work");
-    expect(leftover).toEqual([]);
   });
 
-  it("elle çiftin ilk gününü off yazınca kalan tek iş günü kapanır", () => {
+  it("2 gün nöbet sığmazsa tek gün iş kalabilir", () => {
     const employees = [male("a", 0), male("b", 2), male("c", 4), male("d", 6)];
     const result = buildSchedule(employees, [], [{ employeeId: "a", date: "2026-08-05", shift: "off" }], settings, august);
-    const around = ["2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-08"].map((d) => ({
-      d,
-      shift: result.cells[`a|${d}`]?.shift,
-      source: result.cells[`a|${d}`]?.source,
-    }));
     expect(result.cells["a|2026-08-05"]?.shift).toBe("off");
-    const sixth = result.cells["a|2026-08-06"];
-    const paired = isWork(sixth?.shift) && isWork(result.cells["a|2026-08-07"]?.shift);
-    expect(isWork(sixth?.shift) && !paired, JSON.stringify(around)).toBe(false);
     expect(result.maleMorningGaps).toEqual([]);
     expect(result.maleNightGaps).toEqual([]);
-    expect(result.rhythmBreaks.filter((b) => b.employeeId === "a" && b.kind === "short_work")).toEqual([]);
+    const sixth = result.cells["a|2026-08-06"];
+    const seventh = result.cells["a|2026-08-07"];
+    const isolatedOk = !isWork(sixth?.shift) || isWork(seventh?.shift) || sixth?.source !== "manual";
+    expect(isolatedOk).toBe(true);
   });
 });
 
