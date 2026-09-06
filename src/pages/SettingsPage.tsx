@@ -29,7 +29,7 @@ export function SettingsPage() {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card title="Vardiya kuralları">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="İşyeri adı" hint="Çizelge, Excel ve PDF başlığında görünür.">
+          <Field label="İşyeri adı" hint="Çizelge ve PDF başlığında görünür.">
             <Input
               value={settings.workplaceName}
               onChange={(e) => updateSettings({ workplaceName: e.target.value })}
@@ -200,8 +200,8 @@ export function SettingsPage() {
             Seçili sabah günleri bu hedefe zorlanmaz; işaretlenen günler yine gelir.
           </li>
           <li>
-            <span className="font-medium text-ink">3.</span> 2 iş / 2 off. Üst iki kural bozulmadan kilitli olmayan
-            günler bu ritme çekilir.
+            <span className="font-medium text-ink">3.</span> 2 iş / 2 tatil. 2 gün nöbet sığmazsa 1 gün yazılabilir;
+            iki iş arasında kesinlikle 2 gün tatil olur.
           </li>
           <li>
             <span className="font-medium text-ink">4.</span> Olabiliyorsa gece 2 erkek. Sabahı boşaltmaz, 15 günü ve
@@ -213,7 +213,7 @@ export function SettingsPage() {
       <div className="space-y-4">
         <Card title="Çıktı imza yetkilileri">
           <p className="mb-3 text-xs text-ink-soft">
-            Pasif yetkili çizelge, Excel ve PDF’de görünmez; kayıt silinmez. İsterseniz tamamen silebilirsiniz.
+            Pasif yetkili çizelge ve PDF’de görünmez; kayıt silinmez. İsterseniz tamamen silebilirsiniz.
           </p>
           <datalist id="signatory-roles">
             {SIGNATORY_ROLES.map((role) => (
