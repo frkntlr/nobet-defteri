@@ -1,5 +1,5 @@
 import type { AppState, ScheduleResult } from "../types";
-import { cellLetter, LEAVE_LABEL, LEAVE_SHORT, LEAVE_TYPES } from "./leaves";
+import { LEAVE_LABEL, LEAVE_TYPES, pdfCellMark } from "./leaves";
 import { fromIso, MONTHS_TR, weekdayMon0 } from "./dates";
 import { orderedEmployees, tagsFor } from "./labels";
 import { visibleSignatories } from "./storage";
@@ -9,7 +9,7 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
   const people = orderedEmployees(state.employees.filter((e) => e.active));
   const weekdays = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
   const signs = visibleSignatories(state.signatories);
-  const colW = `${Math.max(2.1, 72 / Math.max(days.length, 1))}%`;
+  const colW = `${Math.max(2.0, 70 / Math.max(days.length, 1))}%`;
 
   const head = days
     .map((iso) => {
@@ -27,9 +27,11 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
       const cells = days
         .map((iso) => {
           const cell = result.cells[`${person.id}|${iso}`];
-          const letter = cell ? cellLetter(cell.shift, cell.leaveType) : "";
+          const mark = cell ? pdfCellMark(cell.shift, cell.leaveType) : "";
           const leave = cell?.shift === "leave";
-          return `<td class="${leave ? "leave" : ""}">${letter || "&nbsp;"}</td>`;
+          const work = cell?.shift === "morning" || cell?.shift === "night";
+          const cls = leave ? "leave" : work ? "work" : "off";
+          return `<td class="${cls}">${mark ? escapeHtml(mark) : ""}</td>`;
         })
         .join("");
       return `<tr>
@@ -40,23 +42,25 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
     })
     .join("");
 
-  const legend = [
-    "S Sabah",
-    "G Gece",
-    ...LEAVE_TYPES.map((t) => `${LEAVE_SHORT[t]} ${LEAVE_LABEL[t]}`),
-    "boş Off",
-  ].join(" · ");
+  const legend = ["S Sabah", "G Gece", ...LEAVE_TYPES.map((t) => `${pdfCellMark("leave", t)} ${LEAVE_LABEL[t]}`), "boş tatil"].join(
+    " · ",
+  );
 
-  const signCols = signs
-    .map(
-      (s) => `<td class="sign">
-        <div class="sign-name">${escapeHtml(s.name.trim()) || "&nbsp;"}</div>
-        <div class="sign-role">${escapeHtml(s.position.trim()) || "Yetkili"}</div>
+  const signBlock = signs.length
+    ? `<div class="signs" style="grid-template-columns: repeat(${signs.length}, minmax(0, 1fr));">${signs
+        .map(
+          (s) => `<div class="sign">
+        <div class="sign-head">
+          <div class="sign-name">${escapeHtml(s.name.trim()) || "&nbsp;"}</div>
+          <div class="sign-role">${escapeHtml(s.position.trim()) || "Yetkili"}</div>
+        </div>
+        <div class="sign-space"></div>
         <div class="sign-line"></div>
         <div class="sign-label">İmza</div>
-      </td>`,
-    )
-    .join("");
+      </div>`,
+        )
+        .join("")}</div>`
+    : "";
 
   const html = `<!doctype html>
 <html lang="tr">
@@ -65,44 +69,58 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
   <title>${escapeHtml(state.settings.workplaceName)} ${MONTHS_TR[month]} ${year}</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: #fff; color: #000; }
-    body { font-family: "IBM Plex Sans", "Liberation Sans", Arial, sans-serif; padding: 14px 16px 20px; }
-    h1 { margin: 0 0 2px; font-size: 20px; font-weight: 700; color: #000; }
-    .meta { margin: 0 0 10px; font-size: 12px; color: #000; }
+    html, body { margin: 0; background: #fff; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: "IBM Plex Sans", "Liberation Sans", Arial, sans-serif; padding: 12px 14px 18px; }
+    h1 { margin: 0 0 2px; font-size: 20px; font-weight: 800; color: #000; }
+    .meta { margin: 0 0 8px; font-size: 12px; color: #000; }
     table.grid { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
     table.grid th, table.grid td {
       border: 1px solid #000;
       background: #fff;
       color: #000;
       text-align: center;
-      padding: 3px 2px;
+      padding: 2px 1px;
       width: ${colW};
+      vertical-align: middle;
     }
-    table.grid th.name, table.grid td.hours { width: 13%; }
+    table.grid th.name, table.grid td.hours { width: 16%; }
     table.grid thead th { background: #fff; color: #000; font-weight: 700; }
-    .day { font-size: 10px; font-weight: 600; }
-    .daynum { font-size: 17px; font-weight: 800; line-height: 1.15; margin-top: 1px; }
-    .name { text-align: left !important; font-size: 14px; font-weight: 800; padding: 4px 6px !important; }
-    .tag { font-size: 9px; font-weight: 500; margin-top: 1px; }
-    .hours { font-weight: 700; }
-    td.leave { font-weight: 800; font-size: 12px; }
-    .legend { margin: 10px 0 0; font-size: 11px; color: #000; }
-    table.signs { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 28px; }
-    table.signs td.sign {
-      border: none;
-      vertical-align: top;
-      text-align: center;
-      padding: 0 10px;
+    .day { font-size: 10px; font-weight: 600; padding: 4px 1px !important; }
+    .daynum { font-size: 22px; font-weight: 800; line-height: 1.05; margin-top: 2px; letter-spacing: -0.03em; }
+    .name { text-align: left !important; font-size: 16px; font-weight: 800; padding: 5px 7px !important; line-height: 1.15; }
+    .tag { font-size: 9px; font-weight: 500; margin-top: 2px; }
+    .hours { font-weight: 700; font-size: 13px; }
+    td.work { font-size: 13px; font-weight: 800; }
+    td.leave { font-weight: 800; font-size: 10px; letter-spacing: -0.02em; }
+    td.off { color: #000; }
+    .legend { margin: 8px 0 0; font-size: 11px; color: #000; }
+    .signs {
+      display: grid;
+      width: 100%;
+      margin-top: 26px;
+      column-gap: 16px;
+      align-items: stretch;
     }
-    .sign-name { font-weight: 800; font-size: 13px; min-height: 18px; color: #000; }
-    .sign-role { font-size: 11px; margin-top: 3px; color: #000; }
-    .sign-line { height: 42px; border-bottom: 1px solid #000; margin: 18px 8px 0; }
-    .sign-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 5px; color: #000; }
-    button.print { margin-bottom: 12px; padding: 8px 12px; background: #fff; color: #000; border: 1px solid #000; }
-    @page { size: A4 landscape; margin: 8mm; }
+    .sign {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      min-width: 0;
+      min-height: 118px;
+    }
+    .sign-head { width: 100%; min-height: 40px; }
+    .sign-name { font-weight: 800; font-size: 13px; line-height: 1.2; min-height: 16px; word-break: break-word; }
+    .sign-role { font-size: 11px; margin-top: 3px; line-height: 1.2; min-height: 14px; }
+    .sign-space { flex: 1 1 auto; min-height: 34px; width: 100%; }
+    .sign-line { width: 86%; border-bottom: 1px solid #000; height: 0; }
+    .sign-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 5px; }
+    button.print { margin-bottom: 10px; padding: 8px 12px; background: #fff; color: #000; border: 1px solid #000; }
+    @page { size: A4 landscape; margin: 7mm; }
     @media print {
       button.print { display: none; }
       body { padding: 0; }
+      .signs { break-inside: avoid; page-break-inside: avoid; }
     }
   </style>
 </head>
@@ -121,11 +139,7 @@ export function exportPdf(state: AppState, result: ScheduleResult, year: number,
     <tbody>${rows}</tbody>
   </table>
   <p class="legend">${escapeHtml(legend)}</p>
-  ${
-    signs.length
-      ? `<table class="signs"><tr>${signCols}</tr></table>`
-      : ""
-  }
+  ${signBlock}
 </body>
 </html>`;
 
