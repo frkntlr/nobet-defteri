@@ -265,3 +265,136 @@ function hasWorkBeyond(
   }
   return false;
 }
+
+/** 2 iş / 2 off: blok en fazla `work` gün, bloklar arası en az `off` gün. */
+function fitsWorkOffRhythm(
+  employee: Employee,
+  date: IsoDate,
+  cells: Record<string, Cell>,
+  leaves: AppState["leaves"],
+  manuals: Map<string, Shift>,
+  settings: Settings,
+) {
+  if (!usesWorkOffCycle(employee)) return true;
+  const before = streakDir(employee, date, -1, cells, leaves, manuals, settings);
+  const after = streakDir(employee, date, 1, cells, leaves, manuals, settings);
+  if (before + 1 + after > maxStreak(employee, settings)) return false;
+  const needOff = minOff(employee, settings);
+  const blockStartOffset = -before;
+  const blockEndOffset = after;
+  const offBefore = offStreakDir(employee, shiftIso(date, blockStartOffset), -1, cells, leaves, manuals, settings);
+  const offAfter = offStreakDir(employee, shiftIso(date, blockEndOffset), 1, cells, leaves, manuals, settings);
+  if (hasWorkBeyond(employee, shiftIso(date, blockStartOffset), -1, cells, leaves, manuals, settings) && offBefore < needOff) {
+    return false;
+  }
+  if (hasWorkBeyond(employee, shiftIso(date, blockEndOffset), 1, cells, leaves, manuals, settings) && offAfter < needOff) {
+    return false;
+  }
+  return true;
+}
+
+function patternAllowsShift(employee: Employee, shift: WorkShift) {
+  if (employee.pattern === "fixed_morning" || employee.pattern === "selected_morning") return shift === "morning";
+  if (employee.pattern === "fixed_night") return shift === "night";
+  return true;
+}
+
+function selectedDayAllows(employee: Employee, date: IsoDate, shift: WorkShift) {
+  if (!hasWeekdayFilter(employee)) return true;
+  if (!weekdayAllowed(employee, fromIso(date))) return false;
+  if (employee.pattern === "selected_morning" || employee.pattern === "fixed_morning") return shift === "morning";
+  if (employee.pattern === "fixed_night") return shift === "night";
+  return true;
+}
+
+function pinnedOn(employee: Employee, date: IsoDate) {
+  return isPinnedWeekday(employee, fromIso(date));
+}
+
+function nightMorningClash(
+  employee: Employee,
+  date: IsoDate,
+  shift: WorkShift,
+  cells: Record<string, Cell>,
+  leaves: AppState["leaves"],
+  manuals: Map<string, Shift>,
+  settings: Settings,
+) {
+  if (shift === "morning") {
+    return resolvedShift(employee, shiftIso(date, -1), cells, leaves, manuals, settings) === "night";
+  }
+  return resolvedShift(employee, shiftIso(date, 1), cells, leaves, manuals, settings) === "morning";
+}
+
+function canAssign(
+  employee: Employee,
+  date: IsoDate,
+  shift: WorkShift,
+  cells: Record<string, Cell>,
+  leaves: AppState["leaves"],
+  manuals: Map<string, Shift>,
+  settings: Settings,
+  relax: FillRelax = "strict",
+) {
+  if (!patternAllowsShift(employee, shift)) return false;
+  if (!selectedDayAllows(employee, date, shift)) return false;
+  if (relax === "hard") return true;
+  if (nightMorningClash(employee, date, shift, cells, leaves, manuals, settings)) return false;
+  if (relax === "rhythm") {
+    const needOff = minOff(employee, settings);
+    const before = streakDir(employee, date, -1, cells, leaves, manuals, settings);
+    const after = streakDir(employee, date, 1, cells, leaves, manuals, settings);
+    const offBefore = offStreakDir(employee, shiftIso(date, -before), -1, cells, leaves, manuals, settings);
+    const offAfter = offStreakDir(employee, shiftIso(date, after), 1, cells, leaves, manuals, settings);
+    if (hasWorkBeyond(employee, shiftIso(date, -before), -1, cells, leaves, manuals, settings) && offBefore < needOff) {
+      return false;
+    }
+    if (hasWorkBeyond(employee, shiftIso(date, after), 1, cells, leaves, manuals, settings) && offAfter < needOff) {
+      return false;
+    }
+    return true;
+  }
+  return fitsWorkOffRhythm(employee, date, cells, leaves, manuals, settings);
+}
+
+function wouldBreakMaleCoverage(
+  employee: Employee,
+  date: IsoDate,
+  cells: Record<string, Cell>,
+  active: Employee[],
+  settings: Settings,
+) {
+  if (employee.gender !== "male") return false;
+  const cell = cells[cellKey(employee.id, date)];
+  if (!cell || !isWork(cell.shift)) return false;
+  return countOn(date, cell.shift, "male", active, cells) <= maleFloor(settings, cell.shift);
+}
+
+function wouldMissTarget(
+  employee: Employee,
+  days: IsoDate[],
+  cells: Record<string, Cell>,
+  settings: Settings,
+) {
+  if (settings.targetWorkDays <= 0 || hasWeekdayFilter(employee)) return false;
+  return workCount(employee.id, days, cells) <= requiredWork(employee.id, days, cells, settings.targetWorkDays);
+}
+
+function partnerClash(
+  employeeId: string,
+  date: IsoDate,
+  shift: WorkShift,
+  cells: Record<string, Cell>,
+  pairs: Set<string>,
+) {
+  if (pairs.size === 0) return false;
+  return partnersOf(employeeId, pairs).some((id) => cells[cellKey(id, date)]?.shift === shift);
+}
+
+function workCount(employeeId: string, days: IsoDate[], cells: Record<string, Cell>) {
+  return days.reduce((n, d) => n + (isWork(cells[cellKey(employeeId, d)]?.shift) ? 1 : 0), 0);
+}
+
+function sameShiftCount(employeeId: string, days: IsoDate[], cells: Record<string, Cell>, shift: WorkShift) {
+  return days.reduce((n, d) => n + (cells[cellKey(employeeId, d)]?.shift === shift ? 1 : 0), 0);
+}
